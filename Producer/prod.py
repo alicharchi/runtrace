@@ -61,7 +61,10 @@ try:
             m = re.match(r"^Time\s+=\s+([-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?)",event)
             if m:
                 sim_time = float(m.group(1))
-                continue
+                if (sim_time<5):
+                    continue
+                else:
+                    break
 
             for extName,ext in extractors.items():
                 m = ext.Get(event)

@@ -72,16 +72,26 @@ try:
     )
 
     logger.info("Getting messages ...")
-    
+
+    BATCH_SIZE = 100
+    batch = []
+
     with engine.connect() as connection:
         while True:        
             for message in consumer:
                 decoded = decode_avro(message.value, schema)                
                 decoded["created_at"] = datetime.fromisoformat(decoded["created_at"])
-                insert_stmt = insert(events_table).values(decoded)
-                connection.execute(insert_stmt)
-                connection.commit()
-                logger.info(f'{decoded["sim_time"]}')
+                batch.append(decoded)
+                if len(batch) >= BATCH_SIZE:
+                    connection.execute(insert(events_table), batch)
+                    logger.info(f"Inserted batch of {len(batch)} records. Last sim_time={batch[-1]['sim_time']}")
+                    batch.clear()
+
+            # flush remaining records
+            if batch:
+                connection.execute(insert(events_table), batch)
+                logger.info(f"Inserted final batch of {len(batch)} records.")
+                batch.clear()
 
 except NoBrokersAvailable:
     logger.error(f"Error: No Kafka brokers available at the specified address: [{bootstrap}]")    
