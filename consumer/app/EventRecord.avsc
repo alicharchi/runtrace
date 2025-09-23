@@ -1,0 +1,11 @@
+{"namespace": "example.avro",
+ "type": "record",
+ "name": "Event",
+ "fields": [
+     {"name": "run_id", "type": "int"},
+     {"name": "sim_time",  "type": ["double", "null"]},
+     {"name": "created_at", "type": ["string", "null"]},
+     {"name": "paramerter", "type": "string"},
+     {"name": "value", "type": "double"}
+ ]
+}
