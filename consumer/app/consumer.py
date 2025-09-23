@@ -24,7 +24,14 @@ def decode_avro(encoded_bytes, schema):
 
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename='/app/data/consumerlogs.log', level=logging.INFO)
+logging.basicConfig(filename='/app/data/consumerlogs.log', level=logging.INFO,
+                    format='%(asctime)s %(levelname)s %(name)s: %(message)s')  # ADDED format
+
+sqlalchemy_logger = logging.getLogger('sqlalchemy.engine')
+sqlalchemy_logger.setLevel(logging.WARNING) 
+for handler in logger.handlers:  
+    sqlalchemy_logger.addHandler(handler)
+
 try:
     user = 'postgres'
     password = get_db_password()
@@ -33,11 +40,10 @@ try:
     database = 'openFoam'
 
     # Construct the connection string
-    connection_string = f'postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}'
-    #connection_string = 'sqlite:////app/data/database.db'
+    connection_string = f'postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}'    
 
     logger.info(f'Connecting to db: {connection_string}')
-    engine = create_engine(connection_string)
+    engine = create_engine(connection_string,echo=True)
 
     metadata = MetaData()
     events_table = Table(
@@ -46,12 +52,13 @@ try:
         Column('run_id', Integer),
         Column('sim_time', Double),
         Column('created_at', DateTime, default=func.now()),
-        Column('paramerter', String),
+        Column('parameter', String),
         Column('value', Double)
     )
 
     logger.info('Creating meta data')
     metadata.create_all(engine)
+
 except Exception as e:
     logger.error(f"An unexpected error occurred: {e}")    
 
@@ -80,18 +87,21 @@ try:
         while True:        
             for message in consumer:
                 decoded = decode_avro(message.value, schema)                
-                decoded["created_at"] = datetime.fromisoformat(decoded["created_at"])
+                if isinstance(decoded.get("created_at"), str):
+                        decoded["created_at"] = datetime.fromisoformat(decoded["created_at"])
                 batch.append(decoded)
                 if len(batch) >= BATCH_SIZE:
                     connection.execute(insert(events_table), batch)
                     logger.info(f"Inserted batch of {len(batch)} records. Last sim_time={batch[-1]['sim_time']}")
                     batch.clear()
+                    connection.commit()
 
             # flush remaining records
             if batch:
                 connection.execute(insert(events_table), batch)
                 logger.info(f"Inserted final batch of {len(batch)} records.")
                 batch.clear()
+                connection.commit()
 
 except NoBrokersAvailable:
     logger.error(f"Error: No Kafka brokers available at the specified address: [{bootstrap}]")    
@@ -104,4 +114,4 @@ finally:
     else:
         logger.warning('Consumer is None. Nothing to close.')
 
-logger.close()
+logger.handlers.clear()

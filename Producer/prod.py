@@ -61,19 +61,17 @@ try:
             m = re.match(r"^Time\s+=\s+([-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?)",event)
             if m:
                 sim_time = float(m.group(1))
-                if (sim_time<5):
-                    continue
-                else:
-                    break
+                continue            
 
             for extName,ext in extractors.items():
                 m = ext.Get(event)
                 if m is not None:
                     message = {"run_id":run_id, "sim_time":sim_time, "created_at":timestamp}
                     for key,value in m.items():                        
-                        kv = {"paramerter":key, "value":value}
+                        kv = {"parameter":key, "value":value}
                         encoded_message = encode_avro(message | kv, schema)
                         producer.send("events", value=encoded_message)
+                break
             
         producer.flush()
 
