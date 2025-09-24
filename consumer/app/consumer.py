@@ -25,13 +25,7 @@ def decode_avro(encoded_bytes, schema):
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='/app/data/consumerlogs.log', level=logging.INFO,
-                    format='%(asctime)s %(levelname)s %(name)s: %(message)s')  # ADDED format
-
-sqlalchemy_logger = logging.getLogger('sqlalchemy.engine')
-sqlalchemy_logger.setLevel(logging.WARNING) 
-for handler in logger.handlers:  
-    sqlalchemy_logger.addHandler(handler)
-
+                    format='%(asctime)s %(levelname)s %(name)s: %(message)s')  
 try:
     user = 'postgres'
     password = get_db_password()
@@ -43,7 +37,7 @@ try:
     connection_string = f'postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}'    
 
     logger.info(f'Connecting to db: {connection_string}')
-    engine = create_engine(connection_string,echo=True)
+    engine = create_engine(connection_string)
 
     metadata = MetaData()
     events_table = Table(
