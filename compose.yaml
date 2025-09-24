@@ -70,7 +70,30 @@ services:
         test: ["CMD", "pg_isready"]
         interval: 10s
         timeout: 5s
-        retries: 5  
+        retries: 5
+
+  backend:
+    container_name: backend
+    build:
+      context: ./api
+    ports:
+      - 8001:8001
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=openFoam
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
+    depends_on:
+      db:
+        condition: service_healthy
+    secrets:
+      - db-password
+    networks:
+      - kafka_network
+    develop:
+      watch:
+        - action: rebuild
+          path: .    
 volumes:
   db-data:  
   kafka-data:
