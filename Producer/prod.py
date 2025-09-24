@@ -1,5 +1,4 @@
-import avro.schema
-import avro.io
+import fastavro
 import io
 from kafka import KafkaProducer
 import re
@@ -18,14 +17,12 @@ class DataExtractor:
             return None
 
 
-# Load Avro schema
-schema = avro.schema.parse(open(r".\consumer\app\EventRecord.avsc", "r").read())
+with open(r".\consumer\app\EventRecord.avsc", "r") as f:
+    schema = fastavro.parse_schema(eval(f.read()))
 
-def encode_avro(data, schema):
-    writer = avro.io.DatumWriter(schema)
+def encode_avro_record(record: dict, schema: dict) -> bytes:
     bytes_writer = io.BytesIO()
-    encoder = avro.io.BinaryEncoder(bytes_writer)
-    writer.write(data, encoder)
+    fastavro.schemaless_writer(bytes_writer, schema, record)
     return bytes_writer.getvalue()
 
 # Kafka producer
@@ -67,7 +64,7 @@ try:
                     message = {"run_id":run_id, "sim_time":sim_time}
                     for key,value in m.items():                        
                         kv = {"parameter":key, "value":value}
-                        encoded_message = encode_avro(message | kv, schema)
+                        encoded_message = encode_avro_record(message | kv, schema)
                         producer.send("events", value=encoded_message)
                 break
             

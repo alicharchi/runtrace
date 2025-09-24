@@ -1,12 +1,11 @@
 import os
 import io
 import logging
-
+import json
 from kafka import KafkaConsumer
 from kafka.errors import NoBrokersAvailable
 
-import avro.schema
-import avro.io
+import fastavro
 
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Double, insert
 
@@ -14,11 +13,9 @@ def get_db_password():
     with open("/run/secrets/db-password", "r") as f:
         return f.read().strip()
 
-def decode_avro(encoded_bytes, schema):
+def decode_avro_fast(encoded_bytes, schema):
     bytes_reader = io.BytesIO(encoded_bytes)
-    decoder = avro.io.BinaryDecoder(bytes_reader)
-    reader = avro.io.DatumReader(schema)
-    return reader.read(decoder)
+    return fastavro.schemaless_reader(bytes_reader, schema)
 
 
 logger = logging.getLogger(__name__)
@@ -58,7 +55,8 @@ bootstrap = os.getenv("BOOTSTRAP_SERVERS", "kafka:9093")
 
 try:
     logger.info(f"Attempting to parse avro schema")
-    schema = avro.schema.parse(open("EventRecord.avsc", "r").read())
+    with open("EventRecord.avsc", "r") as f:
+        schema = fastavro.parse_schema(json.load(f))
     
     logger.info(f"Attempting to connect to kafka broker at {bootstrap}")
     consumer = KafkaConsumer(
@@ -77,7 +75,7 @@ try:
     with engine.connect() as connection:
         while True:        
             for message in consumer:
-                decoded = decode_avro(message.value, schema)
+                decoded = decode_avro_fast(message.value, schema)
                 batch.append(decoded)
                 if len(batch) >= BATCH_SIZE:
                     connection.execute(insert(events_table), batch)
