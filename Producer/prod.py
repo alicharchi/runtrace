@@ -2,7 +2,6 @@ import avro.schema
 import avro.io
 import io
 from kafka import KafkaProducer
-from datetime import datetime, timezone    
 import re
 
 class DataExtractor:
@@ -51,8 +50,7 @@ extractors["cont"] = DataExtractor(
 
 try:
     with open(r"C:\Users\alich\Documents\Py\reactorCFD\cases\case_0\log.pisoFoam", "r") as file:               
-        for line in file:
-            timestamp = datetime.now(timezone.utc).isoformat()
+        for line in file:            
             event = line.strip()
 
             if event=='' or any(event.startswith(p) for p in ignored_prefixes):
@@ -66,7 +64,7 @@ try:
             for extName,ext in extractors.items():
                 m = ext.Get(event)
                 if m is not None:
-                    message = {"run_id":run_id, "sim_time":sim_time, "created_at":timestamp}
+                    message = {"run_id":run_id, "sim_time":sim_time}
                     for key,value in m.items():                        
                         kv = {"parameter":key, "value":value}
                         encoded_message = encode_avro(message | kv, schema)

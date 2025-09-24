@@ -3,8 +3,7 @@
  "name": "Event",
  "fields": [
      {"name": "run_id", "type": "int"},
-     {"name": "sim_time",  "type": ["double", "null"]},
-     {"name": "created_at", "type": ["string", "null"]},
+     {"name": "sim_time",  "type": ["double", "null"]},     
      {"name": "parameter", "type": "string"},
      {"name": "value", "type": "double"}
  ]

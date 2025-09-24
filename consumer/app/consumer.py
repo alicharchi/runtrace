@@ -1,7 +1,6 @@
 import os
 import io
 import logging
-from datetime import datetime
 
 from kafka import KafkaConsumer
 from kafka.errors import NoBrokersAvailable
@@ -9,8 +8,7 @@ from kafka.errors import NoBrokersAvailable
 import avro.schema
 import avro.io
 
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Double, DateTime, insert
-from sqlalchemy.sql import func
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Double, insert
 
 def get_db_password():
     with open("/run/secrets/db-password", "r") as f:
@@ -44,8 +42,7 @@ try:
         'events', metadata,
         Column('id', Integer, primary_key=True),
         Column('run_id', Integer),
-        Column('sim_time', Double),
-        Column('created_at', DateTime, default=func.now()),
+        Column('sim_time', Double),        
         Column('parameter', String),
         Column('value', Double)
     )
@@ -74,15 +71,13 @@ try:
 
     logger.info("Getting messages ...")
 
-    BATCH_SIZE = 100
+    BATCH_SIZE = 1000
     batch = []
 
     with engine.connect() as connection:
         while True:        
             for message in consumer:
-                decoded = decode_avro(message.value, schema)                
-                if isinstance(decoded.get("created_at"), str):
-                        decoded["created_at"] = datetime.fromisoformat(decoded["created_at"])
+                decoded = decode_avro(message.value, schema)
                 batch.append(decoded)
                 if len(batch) >= BATCH_SIZE:
                     connection.execute(insert(events_table), batch)
