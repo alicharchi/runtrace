@@ -2,11 +2,10 @@ services:
   kafka_consumer:
     build: ./consumer
     container_name: kafka_consumer
-    #command: python /app/consumer.py
     restart: "always"
     depends_on:
       kafka:
-        condition: service_started    
+        condition: service_healthy 
       db:
         condition: service_healthy        
     networks:
@@ -18,7 +17,7 @@ services:
     volumes:
       - ./data:/app/data
   kafka:
-    image: apache/kafka:latest
+    image: apache/kafka:4.1.0-rc1
     container_name: kafka
     ports:
       - "9092:9092"   # outside Docker (host access)
@@ -36,13 +35,12 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_LOG_DIRS: /var/lib/kafka/data
-    #healthcheck:
-    #  test: ["CMD", "bash", "-c", "kafka-topics.sh --bootstrap-server kafka:9093 --list"]
-    #  interval: 10s
-    #  timeout: 5s
-    #  retries: 5
-    #  start_period: 30s
-
+    healthcheck:      
+      test: ["CMD", "bash", "-c", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9093 --list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - kafka_network     
     volumes:
