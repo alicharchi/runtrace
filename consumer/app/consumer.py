@@ -41,7 +41,8 @@ try:
         Column('run_id', Integer),
         Column('sim_time', Double),        
         Column('parameter', String),
-        Column('value', Double)
+        Column('value', Double),
+        Column('iter', Integer)
     )
 
     logger.info('Creating meta data')

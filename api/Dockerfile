@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax = docker/dockerfile:1.4
 
 # Comments are provided throughout this file to help you get started.
 # If you need more help, visit the Dockerfile reference guide at
@@ -7,7 +7,7 @@
 # Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
 
 ARG PYTHON_VERSION=3.12
-FROM python:${PYTHON_VERSION}-slim as base
+FROM python:${PYTHON_VERSION}-slim AS base
 
 # Prevents Python from writing pyc files.
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -48,4 +48,4 @@ COPY . .
 EXPOSE 8001
 
 # Run the application.
-CMD python3 -m uvicorn app:app --host=0.0.0.0 --port=8001
+CMD ["python3","-m","uvicorn","app:app","--host=0.0.0.0","--port=8001"]

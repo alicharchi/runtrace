@@ -46,6 +46,7 @@ extractors["cont"] = DataExtractor(
     )
 
 try:
+    iters = {}
     with open(r"C:\Users\alich\Documents\Py\reactorCFD\cases\case_0\log.pisoFoam", "r") as file:               
         for line in file:            
             event = line.strip()
@@ -56,6 +57,7 @@ try:
             m = re.match(r"^Time\s+=\s+([-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?)",event)
             if m:
                 sim_time = float(m.group(1))
+                iters = {k: 0 for k in iters}
                 continue            
 
             for extName,ext in extractors.items():
@@ -63,7 +65,8 @@ try:
                 if m is not None:
                     message = {"run_id":run_id, "sim_time":sim_time}
                     for key,value in m.items():                        
-                        kv = {"parameter":key, "value":value}
+                        iters[key] = iters.get(key, 0) + 1
+                        kv = {"parameter":key, "value":value, "iter":iters[key]}                        
                         encoded_message = encode_avro_record(message | kv, schema)
                         producer.send("events", value=encoded_message)
                 break
