@@ -18,6 +18,7 @@ class Events(SQLModel, table=True):
     sim_time: float
     parameter: str
     value: float
+    iter: int
 
 class EventsReduced(BaseModel):
     sim_time: float
@@ -68,20 +69,37 @@ def get_events(session: Session = Depends(get_session)):
 def get_events_by_parameter(
     parameter: Optional[str] = Query(None, description="Filter by parameter"),
     runid: Optional[int] = Query(None, description="Filter by runid"),
+    iter: Optional[int] = Query(None, description="Filter by iteration"),
+    time_min: Optional[float] = Query(0, description="Filter by min_time"),
+    time_max: Optional[float] = Query(-1, description="Filter by max_time"),
     session: Session = Depends(get_session)
 ):
     statement = select(Events)
-    if not (parameter and runid):
+    if not (parameter and runid and iter):
         return []
     
-    statement = select(
-        Events.sim_time,
-        func.min(Events.value).label("value")
-    ).where(
-        (Events.parameter == parameter) & (Events.run_id == runid)
-    ).group_by(
-        Events.sim_time
-    )
+    if (time_max==-1):    
+        statement = select(
+            Events.sim_time,
+            Events.value
+        ).where(
+            (Events.parameter == parameter) 
+            & (Events.run_id == runid) 
+            & (Events.iter == iter)
+            & (Events.sim_time>=time_min)
+        )
+    else:
+        statement = select(
+            Events.sim_time,
+            Events.value
+        ).where(
+            (Events.parameter == parameter) 
+            & (Events.run_id == runid) 
+            & (Events.iter == iter)
+            & (Events.sim_time>=time_min)
+            & (Events.sim_time<=time_max)
+        )
+
     
     results = session.exec(statement).all()
     return [EventsReduced(sim_time=row.sim_time, value=row.value) for row in results]
