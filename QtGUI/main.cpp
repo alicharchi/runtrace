@@ -14,13 +14,15 @@
 #include <QTextStream>
 #include "plotwindow.h"
 
+#include <QTimer>
+
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
 
-    QSqlDatabase db = QSqlDatabase::addDatabase("QPSQL"); // Specify the PostgreSQL driver
-    db.setHostName("localhost"); // Or the IP address of your PostgreSQL server
-    db.setPort(5432); // Default PostgreSQL port
+    QSqlDatabase db = QSqlDatabase::addDatabase("QPSQL");
+    db.setHostName("localhost");
+    db.setPort(5432);
     db.setDatabaseName("openFoam");
     db.setUserName("postgres");
     db.setPassword("ali123");
@@ -32,17 +34,24 @@ int main(int argc, char* argv[])
         qDebug() << "Error connecting to database:" << db.lastError().text();
     }
 
-    //QMainWindow window;
+    plotWindow w(1);
 
-    // Create a widget
-    QScopedPointer<plotWindow> w = QScopedPointer<plotWindow>(new plotWindow(1));
+    QTimer timer;
+    // Connect the timeout signal to a lambda function to update the label
+    QObject::connect(&timer, &QTimer::timeout, [&w]() {
+        w.RefreshData(1.0);
+        qInfo() << "Calling refresh.";
+    });
+
+    // Start the timer to fire every 1000 milliseconds (1 second)
+    timer.start(3000);
 
     //window.setCentralWidget(w);
     //window.resize(900, 600);
     //window.show();
 
-    w->resize(900, 600);
-    w->show();
+    w.resize(900, 600);
+    w.show();
 
     // Event loop
     return app.exec();

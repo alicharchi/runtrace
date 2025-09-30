@@ -48,6 +48,7 @@ extractors["cont"] = DataExtractor(
 try:
     iters = {}
     with open(r"C:\Users\alich\Documents\Py\reactorCFD\cases\case_0\log.pisoFoam", "r") as file:               
+        i = 0
         for line in file:            
             event = line.strip()
 
@@ -58,8 +59,10 @@ try:
             if m:
                 sim_time = float(m.group(1))
                 iters = {k: 0 for k in iters}
+                i+=1
+                if (i % 1000 == 0): print(f'Sent t={sim_time}')
                 continue            
-
+                
             for extName,ext in extractors.items():
                 m = ext.Get(event)
                 if m is not None:

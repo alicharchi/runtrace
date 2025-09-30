@@ -8,7 +8,11 @@
 #include <QToolBar>
 #include <QAction>
 #include <QComboBox>
+#include <QLabel>
+#include <QLineEdit>
 
+#include <QtCharts/QValueAxis>
+#include <QtCharts/QLogValueAxis>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
 
@@ -25,17 +29,25 @@ class plotWindow : public QWidget
     QAction *closeAction;
     QComboBox *cmbParmas;
     QComboBox *cmbIters;
+    QLineEdit *minXBox;
+    QLineEdit *maxXBox;
+    QAction *updateLimitsAction;
     int _runId;
+    double _minX,_maxX;
     QLineSeries _data_series;
+
+    QValueAxis *_axisX,*_axisY;
 
     void SetupToolbar();
     void PopulateFields();
-    void RefreshData(const double samplingTime);
+    void SetupChart();
 
 private slots:
     void Save();
 
     void Close();
+
+    void UpdateLimits();
 
     void ChangeSeries(const QString &text);
 
@@ -44,8 +56,10 @@ public:
 
     ~plotWindow();
 
-    void AddSeries(QLineSeries* series);
+    //void AddSeries(QLineSeries* series);
     void SetRunID(int runId);
+
+    void RefreshData(const double samplingTime);
 
 };
 
