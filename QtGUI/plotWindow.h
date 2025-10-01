@@ -10,6 +10,7 @@
 #include <QComboBox>
 #include <QLabel>
 #include <QLineEdit>
+#include <QTableView>
 
 #include <QtCharts/QValueAxis>
 #include <QtCharts/QLogValueAxis>
@@ -24,7 +25,7 @@ class plotWindow : public QWidget
     QToolBar* toolbar;
     QChartView *chartView;
     QChart *chart;
-
+    QTableView* runsView;
     QAction *saveAction;
     QAction *closeAction;
     QComboBox *cmbParmas;
@@ -40,6 +41,7 @@ class plotWindow : public QWidget
 
     void SetupToolbar();
     void PopulateFields();
+    void SetupRunsTable();
     void SetupChart();
 
 private slots:
@@ -51,13 +53,12 @@ private slots:
 
     void ChangeSeries(const QString &text);
 
+    void RunsSelectionChanged(const QModelIndex &current, const QModelIndex &previous);
+
 public:
-    explicit plotWindow(int runId, QWidget* parent = nullptr);
+    explicit plotWindow(QWidget* parent = nullptr);
 
-    ~plotWindow();
-
-    //void AddSeries(QLineSeries* series);
-    void SetRunID(int runId);
+    ~plotWindow();    
 
     void RefreshData(const double samplingTime);
 

@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
         qDebug() << "Error connecting to database:" << db.lastError().text();
     }
 
-    plotWindow w(1);
+    plotWindow w;
 
     QTimer timer;
     // Connect the timeout signal to a lambda function to update the label

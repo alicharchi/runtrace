@@ -2,6 +2,7 @@
 
 #include <QIcon>
 #include <QStyle>
+#include <QSplitter>
 
 #include <QFileDialog>
 
@@ -11,16 +12,18 @@
 
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QSqlQueryModel>
 
 #include <QString>
 #include <QTextStream>
 
+
 #include <cmath>
 //************************************ public ******************************************
 
-plotWindow::plotWindow(int runId,QWidget *parent)
+plotWindow::plotWindow(QWidget *parent)
     :QWidget(parent),
-    _runId(runId),
+    _runId(-1),
     _minX{0},
     _maxX{100}
 {
@@ -28,10 +31,37 @@ plotWindow::plotWindow(int runId,QWidget *parent)
 
     gridLayout = new QGridLayout(this);
 
+    runsView = new QTableView(this);
+    gridLayout->addWidget(runsView,1,0);
+
+    SetupRunsTable();
+
+    toolbar = new QToolBar(this);
+    gridLayout->addWidget(toolbar,0,0,1,3);
     SetupToolbar();
+
+    QSplitter* splitter = new QSplitter(Qt::Horizontal, this);
+    gridLayout->addWidget(splitter, 1, 0, 1, 3);
+    splitter->addWidget(runsView);
+
     PopulateFields();
 
+    chart = new QChart();
+    chartView = new QChartView(chart,this);
+    chartView->chart()->setTheme(QChart::ChartTheme::ChartThemeLight);
+    gridLayout->addWidget(chartView, 1, 1,1,2);
+    gridLayout->rowMinimumHeight(200);
+    gridLayout->setColumnStretch(0, 1);
+    gridLayout->setColumnStretch(1, 3);
+    splitter->addWidget(chartView);
+
+    splitter->setStretchFactor(0, 1);
+    splitter->setStretchFactor(1, 3);
+
     SetupChart();
+
+    gridLayout->rowMinimumHeight(200);
+
     this->setLayout(gridLayout);
 
     RefreshData(0.1);
@@ -41,16 +71,9 @@ plotWindow::~plotWindow()
 {    
 }
 
-void plotWindow::SetRunID(int runId)
-{
-    _runId=runId;
-}
-
 //************************************ private ******************************************
 void plotWindow::SetupToolbar()
 {
-    toolbar = new QToolBar(this);
-
     saveAction = new QAction(QApplication::style()->standardIcon(QStyle::SP_DialogSaveButton),"Save",toolbar);
     toolbar->addAction(saveAction);
     connect(saveAction, &QAction::triggered, this, &plotWindow::Save);
@@ -103,9 +126,15 @@ void plotWindow::SetupToolbar()
 
 void plotWindow::PopulateFields()
 {
+    if (_runId==-1)
+    {
+        qInfo() << "Skipping " << __FUNCTION__ << ", runId not selected";
+        return;
+    }
+
+    qInfo() << "Attempting to query fields ...";
     cmbParmas->clear();
-    cmbIters->clear();
-    qInfo() << "Attempting to query fields ...\n";
+    cmbIters->clear();    
 
     QSqlQuery query;
     QString outputString;
@@ -133,16 +162,30 @@ void plotWindow::PopulateFields()
     }
 }
 
+void plotWindow::SetupRunsTable()
+{
+    qInfo() << "Setting up table ...";
+    QSqlQueryModel *model = new QSqlQueryModel(this);
+    model->setQuery("SELECT * FROM runs;");
+
+    if (model->lastError().isValid()) {
+        qDebug() << "Query Error:" << model->lastError().text();
+    }
+    qInfo() << "Row count:" << model->rowCount()
+            << "Col count:" << model->columnCount();
+
+    runsView->setModel(model);
+    runsView->resizeColumnsToContents();
+    runsView->setMinimumHeight(300);
+    runsView->setMinimumWidth(100);
+
+    connect(runsView->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &plotWindow::RunsSelectionChanged);
+
+    runsView->show();
+}
+
 void plotWindow::SetupChart()
 {
-    gridLayout->addWidget(toolbar,0,0,1,3);
-
-    chart = new QChart();
-    chartView = new QChartView(chart,this);
-    chartView->chart()->setTheme(QChart::ChartTheme::ChartThemeLight);
-    gridLayout->addWidget(chartView, 1, 0,1,3);
-    gridLayout->rowMinimumHeight(50);
-
     chart->addSeries(&_data_series);
 
     chart->createDefaultAxes();
@@ -155,6 +198,12 @@ void plotWindow::SetupChart()
 
 void plotWindow::RefreshData(const double samplingTime)
 {
+    if (_runId==-1)
+    {
+        qInfo() << "Skipping " << __FUNCTION__ << ", runId not selected";
+        return;
+    }
+
     qInfo() << "Refreshing data ...";
     const QString paramName = cmbParmas->currentText();
     const int iter = cmbIters->currentText().toInt();
@@ -247,6 +296,29 @@ void plotWindow::ChangeSeries(const QString &text)
     if (this->isVisible())
     {
         RefreshData(1);
+    }
+}
+
+void plotWindow::RunsSelectionChanged
+    (
+    const QModelIndex &current,
+    const QModelIndex &previous
+    )
+{
+    Q_UNUSED(previous); // if you don't need 'previous'
+
+    if (!current.isValid())
+        return;
+
+    int idColumn = 0;
+
+    QVariant idData = current.model()->data(current.sibling(current.row(), idColumn));
+    int id = idData.toInt();
+
+    qDebug() << "Selected run id:" << id;
+    if (id>0)
+    {
+        _runId = id;
     }
 }
 
