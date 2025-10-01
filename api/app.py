@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel
 from fastapi import FastAPI, Depends, Query
+from fastapi import HTTPException
 from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationship
 
 
@@ -19,22 +20,22 @@ def get_db_password():
 # -------------------------------
 class Runs(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    build: Optional[str] = Field(default=None)   # <<< changed (lowercase for Postgres)
-    version: Optional[str] = Field(default=None) # <<< changed
-    exec: Optional[str] = Field(default=None)    # <<< changed
-    time: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))  # <<< changed (callable)
-    host: Optional[str] = Field(default=None)    # <<< changed
-    pid: Optional[int] = Field(default=None)     # <<< changed
-    case: Optional[str] = Field(default=None)    # <<< changed
-    nprocs: Optional[int] = Field(default=None)  # <<< changed
+    build: Optional[str] = Field(default=None)
+    version: Optional[str] = Field(default=None)
+    exec: Optional[str] = Field(default=None)
+    time: Optional[datetime] = Field(default_factory=lambda: datetime.now())
+    host: Optional[str] = Field(default=None)
+    pid: Optional[int] = Field(default=None) 
+    case: Optional[str] = Field(default=None)
+    nprocs: Optional[int] = Field(default=None)
 
-    events: List["Events"] = Relationship(back_populates="run")  # <<< changed (was "team")
+    events: List["Events"] = Relationship(back_populates="run")  
 
 
 class Events(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    run_id: Optional[int] = Field(default=None, foreign_key="runs.id")  # <<< changed (added type + lowercase table)
-    run: Optional[Runs] = Relationship(back_populates="events")         # <<< changed
+    run_id: Optional[int] = Field(default=None, foreign_key="runs.id")  
+    run: Optional[Runs] = Relationship(back_populates="events")        
 
     sim_time: float
     parameter: str
@@ -53,7 +54,8 @@ class RunsCreate(BaseModel):
     host: Optional[str] = None
     pid: Optional[int] = None
     case: Optional[str] = None
-    nprocs: Optional[int] = None
+    nprocs: Optional[int] = None    
+    time: Optional[datetime] = Field(default_factory=lambda: datetime.now())
 
 # -------------------------------
 # Database Setup
@@ -101,6 +103,21 @@ def get_events(session: Session = Depends(get_session)):
     statement = select(Runs)
     results = session.exec(statement).all()
     return results
+
+@app.put("/runs/{run_id}", response_model=Runs)
+def update_run(run_id: int, run_update: RunsCreate, session: Session = Depends(get_session)):
+    db_run = session.get(Runs, run_id)
+    if not db_run:
+        raise HTTPException(status_code=404, detail=f"Run with id={run_id} not found")
+    
+    update_data = run_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_run, key, value)
+
+    session.add(db_run)
+    session.commit()
+    session.refresh(db_run)
+    return db_run
 
 @app.get("/events", response_model=List[Events])
 def get_events(session: Session = Depends(get_session)):
