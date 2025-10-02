@@ -17,6 +17,8 @@
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
 
+#include <QTimer>
+
 class plotWindow : public QWidget
 {
     Q_OBJECT
@@ -33,6 +35,8 @@ class plotWindow : public QWidget
     QLineEdit *minXBox;
     QLineEdit *maxXBox;
     QAction *updateLimitsAction;
+    QTimer* _timer;
+
     int _runId;
     double _minX,_maxX;
     QLineSeries _data_series;
@@ -54,6 +58,8 @@ private slots:
     void ChangeSeries(const QString &text);
 
     void RunsSelectionChanged(const QModelIndex &current, const QModelIndex &previous);
+
+    void timerTick();
 
 public:
     explicit plotWindow(QWidget* parent = nullptr);

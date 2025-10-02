@@ -51,7 +51,8 @@ plotWindow::plotWindow(QWidget *parent)
     chartView->chart()->setTheme(QChart::ChartTheme::ChartThemeLight);
     gridLayout->addWidget(chartView, 1, 1,1,2);
     gridLayout->rowMinimumHeight(200);
-    gridLayout->setColumnStretch(0, 1);
+    gridLayout->setColumnMinimumWidth(1,200);
+    gridLayout->setColumnMinimumWidth(2,200);
     gridLayout->setColumnStretch(1, 3);
     splitter->addWidget(chartView);
 
@@ -64,7 +65,9 @@ plotWindow::plotWindow(QWidget *parent)
 
     this->setLayout(gridLayout);
 
-    RefreshData(0.1);
+    _timer = new QTimer(this);
+    QObject::connect(_timer, &QTimer::timeout, this, &plotWindow::timerTick);
+    _timer->start(5000);
 }
 
 plotWindow::~plotWindow()
@@ -115,7 +118,7 @@ void plotWindow::SetupToolbar()
     toolbar->addWidget(label4);
 
     maxXBox = new QLineEdit(this);
-    maxXBox->setText("1000.0");
+    maxXBox->setText(QString::number(_maxX));
     maxXBox->setValidator(validator);
     toolbar->addWidget(maxXBox);
 
@@ -126,12 +129,6 @@ void plotWindow::SetupToolbar()
 
 void plotWindow::PopulateFields()
 {
-    if (_runId==-1)
-    {
-        qInfo() << "Skipping " << __FUNCTION__ << ", runId not selected";
-        return;
-    }
-
     qInfo() << "Attempting to query fields ...";
     cmbParmas->clear();
     cmbIters->clear();    
@@ -140,22 +137,23 @@ void plotWindow::PopulateFields()
     QString outputString;
     QTextStream qs(&outputString);
 
-    qs << "SELECT parameter,COUNT(sim_time) FROM public.events WHERE run_id=" <<
-        _runId << " GROUP BY parameter HAVING COUNT(sim_time)>0;";
+    qs << "SELECT parameter,COUNT(sim_time) FROM public.events "
+       << "GROUP BY parameter;";
 
     query.exec(outputString);
 
+    qDebug() << query.numRowsAffected();
     while (query.next())
     {
         cmbParmas->addItem(query.value(0).toString());
     }
 
     outputString = "";
-    qs << "SELECT iter,COUNT(id) FROM public.events WHERE run_id=" <<
-        _runId << " GROUP BY iter HAVING COUNT(id)>0;";
+    qs << "SELECT iter,COUNT(id) FROM public.events "
+       << "GROUP BY iter;";
 
     query.exec(outputString);
-
+    qDebug() << query.numRowsAffected();
     while (query.next())
     {
         cmbIters->addItem(query.value(0).toString());
@@ -180,6 +178,9 @@ void plotWindow::SetupRunsTable()
     runsView->setMinimumWidth(100);
 
     connect(runsView->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &plotWindow::RunsSelectionChanged);
+
+    runsView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    runsView->setSelectionMode(QAbstractItemView::SingleSelection);
 
     runsView->show();
 }
@@ -213,7 +214,6 @@ void plotWindow::RefreshData(const double samplingTime)
 
     qInfo() << "Param name is : " << paramName;
 
-    _data_series.clear();
     QSqlQuery query;
     QString outputString;
     QTextStream qs(&outputString);
@@ -221,14 +221,17 @@ void plotWindow::RefreshData(const double samplingTime)
     qs << "SELECT FLOOR(sim_time / " << samplingTime << " ) * " << samplingTime << " AS sim_time_bin, MIN(value) AS x FROM events " <<
         "WHERE sim_time>=" << _minX <<
         " AND sim_time<=" << _maxX <<
+        " AND run_id=" << _runId <<
         " AND iter="
        << iter
        << " AND parameter = '"
        << paramName
        << "' GROUP BY sim_time_bin ORDER BY sim_time_bin;";
 
+    qDebug() << outputString;
     query.exec(outputString);
 
+    _data_series.clear();
     while (query.next())
     {
         _data_series.append(query.value(0).toDouble(),query.value(1).toDouble());
@@ -244,8 +247,8 @@ void plotWindow::RefreshData(const double samplingTime)
     qs << "SELECT MIN(value) AS MIN_VAL, MAX(value) AS MAX_VAL,MAX(sim_time) AS MAX_TIME FROM public.events " <<
         "WHERE sim_time>=" << _minX
        << " AND sim_time<=" << _maxX
-       << " AND iter="
-       << iter
+       << " AND iter=" << iter
+       << " AND run_id=" << _runId
        <<" AND parameter = '"
        << paramName
        << "';";
@@ -320,5 +323,11 @@ void plotWindow::RunsSelectionChanged
     {
         _runId = id;
     }
+}
+
+void plotWindow::timerTick()
+{
+    qInfo() << "Calling refresh.";
+    RefreshData(0.1);
 }
 

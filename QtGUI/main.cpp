@@ -9,16 +9,27 @@
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
-
+#include <QMessageBox>
+#include <QIcon>
 #include <QString>
 #include <QTextStream>
 #include "plotwindow.h"
 
-#include <QTimer>
+
 
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
+
+    app.setWindowIcon(QIcon("../../icons/118829_monitor_utilities_system_icon.ico"));
+
+    QMessageBox msgBox(nullptr);
+    msgBox.setIcon(QMessageBox::Critical);
+    msgBox.setWindowTitle("Connection Error");
+
+    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    msgBox.setDefaultButton(QMessageBox::Yes);
+
 
     QSqlDatabase db = QSqlDatabase::addDatabase("QPSQL");
     db.setHostName("localhost");
@@ -27,28 +38,30 @@ int main(int argc, char* argv[])
     db.setUserName("postgres");
     db.setPassword("ali123");
 
-    if (db.open()) {
-        qInfo() << "Successfully connected to PostgreSQL database.";
-        // You can now perform database operations using QSqlQuery
-    } else {
-        qDebug() << "Error connecting to database:" << db.lastError().text();
+    QMessageBox::StandardButton reply = QMessageBox::Yes;
+    while(reply==QMessageBox::Yes)
+    {
+        if (db.open()) {
+            qInfo() << "Successfully connected to PostgreSQL database.";
+            reply=QMessageBox::Ok;
+        } else {
+            qDebug() << "Error connecting to database:" << db.lastError().text();
+
+            msgBox.setText(
+                QString("Error connecting to database:\n\n") +
+                db.lastError().text() +
+                "\n\nDo you want to retry?"
+                );
+
+            reply = static_cast<QMessageBox::StandardButton>(msgBox.exec());
+        }
+
+        if (reply==QMessageBox::No)
+        {
+            return 1;
+        }
     }
-
     plotWindow w;
-
-    QTimer timer;
-    // Connect the timeout signal to a lambda function to update the label
-    QObject::connect(&timer, &QTimer::timeout, [&w]() {
-        w.RefreshData(1.0);
-        qInfo() << "Calling refresh.";
-    });
-
-    // Start the timer to fire every 1000 milliseconds (1 second)
-    timer.start(3000);
-
-    //window.setCentralWidget(w);
-    //window.resize(900, 600);
-    //window.show();
 
     w.resize(900, 600);
     w.show();

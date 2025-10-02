@@ -1,9 +1,12 @@
-import fastavro
 import io
-from kafka import KafkaProducer
 import re
+import os
+from datetime import datetime
+import argparse
+
 import requests
-from datetime import datetime, timezone
+from kafka import KafkaProducer
+import fastavro
 
 class DataExtractor:
     def __init__(self,pattern:str,groups):
@@ -47,23 +50,38 @@ def submitRunHeader(id,header):
 
     url = Base_URL + f"/runs/{id}"
     run_put_response = requests.put(url, json=payload).json()
-    print(run_put_response)
+    print('Sending header:')
+    for k,v in run_put_response.items():
+        print(f' {k}: [{v}]')
 
 Base_URL = "http://localhost:8001"
+Kafka_Broker = "localhost:9092"
+
+parser = argparse.ArgumentParser()
+parser.add_argument("file", help="Log file name to consume")
+parser.add_argument("--broker", help=f"Kafka broker address and port (default: {Kafka_Broker})" , default=Kafka_Broker)
+parser.add_argument("--runs_registry", help=f"Api for registering run (default: {Base_URL})", default=Base_URL)
+args = parser.parse_args()
+
+if not args.file:
+    raise ValueError("Log file name must be provided as command-line argument")
+
+if not os.path.exists(args.file):
+    raise FileNotFoundError("Log file was not found")
 
 with open(r".\consumer\app\EventRecord.avsc", "r") as f:
     schema = fastavro.parse_schema(eval(f.read()))
 
 # Kafka producer
 producer = KafkaProducer(
-    bootstrap_servers="localhost:9092"
+    bootstrap_servers=Kafka_Broker
 )
 
 sim_time = 0.0
 
 # Get run id
 run_id = getNewRunId()
-print(f'Run id is {run_id}')
+print(f'Run registerd as {run_id}')
 
 ignored_prefixes = [r'//',r'/*',r'\*',r'|']
 
@@ -80,7 +98,7 @@ header_done = False
 header = {key:None for key in ["Build","Exec","Date","Time","PID","Case","nProcs","Host"]}
 try:
     iters = {}
-    with open(r"C:\Users\alich\Documents\Py\reactorCFD\cases\case_0\log.pisoFoam", "r") as file:               
+    with open(args.file, "r") as file:               
         i = 0
         for line in file:            
             event = line.strip()
