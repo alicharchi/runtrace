@@ -3,7 +3,6 @@
 
 #include <QWidget>
 #include <QApplication>
-
 #include <QGridLayout>
 #include <QToolBar>
 #include <QAction>
@@ -11,63 +10,48 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QTableView>
-
 #include <QtCharts/QValueAxis>
-#include <QtCharts/QLogValueAxis>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
-
 #include <QTimer>
+#include <QSqlQuery>
+#include <QList>
+
+#include "plotData.h"
+#include "customserieschart.h"
 
 class plotWindow : public QWidget
 {
     Q_OBJECT
 
+    PlotData plotData;
     QGridLayout *gridLayout;
     QToolBar* toolbar;
-    QChartView *chartView;
-    QChart *chart;
     QTableView* runsView;
     QAction *saveAction;
     QAction *closeAction;
-    QComboBox *cmbParmas;
-    QComboBox *cmbIters;
     QLineEdit *minXBox;
     QLineEdit *maxXBox;
     QAction *updateLimitsAction;
-    QTimer* _timer;
-
-    int _runId;
-    double _minX,_maxX;
-    QLineSeries _data_series;
-
-    QValueAxis *_axisX,*_axisY;
+    QTimer* _timer;    
+    QList<CustomSeriesChart*> charts;
 
     void SetupToolbar();
-    void PopulateFields();
     void SetupRunsTable();
-    void SetupChart();
+    void SetupCharts();        
 
 private slots:
     void Save();
-
     void Close();
-
     void UpdateLimits();
-
-    void ChangeSeries(const QString &text);
+    void UpdateCharts();
 
     void RunsSelectionChanged(const QModelIndex &current, const QModelIndex &previous);
-
     void timerTick();
 
 public:
     explicit plotWindow(QWidget* parent = nullptr);
-
-    ~plotWindow();    
-
-    void RefreshData(const double samplingTime);
-
+    ~plotWindow();
 };
 
 #endif // PLOTWINDOW_H

@@ -58,7 +58,7 @@ producer = KafkaProducer(
 run_id = getNewRunId()
 print(f'Run registerd as {run_id}')
 
-parameters = ['cont_err_cumulative','cont_err_global','cont_err_local','fake_error']
+parameters = ['cont_err_cumulative ','cont_err_global','cont_err_local','fake_error']
 baselines = {'cont_err_cumulative':1.0,'cont_err_global':0.8,'cont_err_local':0.6,'fake_error':2.0}
 freq = 1
 b = 0.1
