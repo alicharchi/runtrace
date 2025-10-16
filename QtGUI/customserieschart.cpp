@@ -19,7 +19,9 @@ CustomSeriesChart::CustomSeriesChart(const PlotData* const plotData, QWidget *pa
     chart->addAxis(axisX, Qt::AlignBottom);
     chart->addAxis(axisY, Qt::AlignLeft);
 
-    data_series.setName("Series 1");
+    axisX->setTitleText("time");
+
+    chart->legend()->hide();
     chart->addSeries(&data_series);
     data_series.attachAxis(axisX);
     data_series.attachAxis(axisY);
@@ -79,7 +81,7 @@ void CustomSeriesChart::LinkDataToWidget(QComboBox *cmb, QString field)
     if (cmb->count()>0)
     {
         cmb->setCurrentIndex(0);
-    }
+    }    
 }
 
 void CustomSeriesChart::PopulateParameters()
@@ -89,7 +91,7 @@ void CustomSeriesChart::PopulateParameters()
 
 void CustomSeriesChart::PopulateIters()
 {
-    LinkDataToWidget(cmbIter,"iter");
+    LinkDataToWidget(cmbIter,"iter");    
 }
 
 void CustomSeriesChart::Plot()
@@ -143,5 +145,6 @@ void CustomSeriesChart::SelectionChanged(int i)
 {
     qInfo() << __FUNCTION__ << ": " << "Series set to [" << i << "]" ;
     Plot();
+    axisY->setTitleText(QStringLiteral("%1-%2").arg(cmbParams->currentText(),cmbIter->currentText()));
 }
 
