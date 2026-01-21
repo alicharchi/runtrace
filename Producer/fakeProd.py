@@ -18,22 +18,25 @@ def getNewRunId():
     run_put_response = requests.post(url, json={}).json()
     return run_put_response["id"]   
 
-def submitRunHeader(id):
-    payload = {}
-    payload["build"]="615aae61d7-20250627"
-    payload["version"]="2506"
-    payload["exec"] = "pisoFoam"
-    payload["host"] = "fake"
-    payload["pid"] = 0
-    payload["case"] = "/fake/case"
-    payload["nprocs"] = 1
-    payload["time"] = datetime.now().isoformat()
+def submitRunHeader(run_id):
+    info_list = []
 
-    url = Base_URL + f"/runs/{id}"
-    run_put_response = requests.put(url, json=payload).json()
-    print('Sending header:')
-    for k,v in run_put_response.items():
-        print(f' {k}: [{v}]')
+    info_list.append({"property": "build", "value": "12345"})
+    info_list.append({"property": "version", "value": "1712"})
+    info_list.append({"property": "openfoam", "value": "v1712"})
+
+    now = datetime.now()
+    iso_string = now.isoformat()
+    info_list.append({"property": "time", "value": iso_string})
+    
+    url = f"{Base_URL}/runinfo/{run_id}"
+    response = requests.post(url, json=info_list)
+    response.raise_for_status()  
+    runinfo_response = response.json()
+
+    print("Sent RunInfo:")
+    for info in runinfo_response:
+        print(f"  {info['property']}: [{info['value']}]")
 
 Base_URL = "http://localhost:8001"
 Kafka_Broker = "localhost:9092"
@@ -46,7 +49,7 @@ parser.add_argument("--broker", help=f"Kafka broker address and port (default: {
 parser.add_argument("--runs_registry", help=f"Api for registering run (default: {Base_URL})", default=Base_URL)
 args = parser.parse_args()
 
-with open(r".\consumer\app\EventRecord.avsc", "r") as f:
+with open(r"EventRecord.avsc", "r") as f:
     schema = fastavro.parse_schema(eval(f.read()))
 
 # Kafka producer
@@ -58,7 +61,7 @@ producer = KafkaProducer(
 run_id = getNewRunId()
 print(f'Run registerd as {run_id}')
 
-parameters = ['cont_err_cumulative ','cont_err_global','cont_err_local','fake_error']
+parameters = ['cont_err_cumulative','cont_err_global','cont_err_local','fake_error']
 baselines = {'cont_err_cumulative':1.0,'cont_err_global':0.8,'cont_err_local':0.6,'fake_error':2.0}
 freq = 1
 b = 0.1

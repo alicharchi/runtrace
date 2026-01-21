@@ -17,7 +17,7 @@ services:
     volumes:
       - ./data:/app/data
   kafka:
-    image: apache/kafka:4.1.0-rc1
+    image: apache/kafka:4.1.0
     container_name: kafka
     ports:
       - "9092:9092"   # outside Docker (host access)
@@ -47,14 +47,14 @@ services:
       - kafka-data:/var/lib/kafka/data
 
   db:
-      image: postgres
+      image: postgres:18
       container_name: postgres-db
       restart: always
       user: postgres
       secrets:
         - db-password
       volumes:
-        - db-data:/var/lib/postgresql/data
+        - db-data:/var/lib/postgresql
       environment:
         - POSTGRES_DB=openFoam
         - POSTGRES_PASSWORD_FILE=/run/secrets/db-password

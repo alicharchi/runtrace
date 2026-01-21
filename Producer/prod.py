@@ -3,21 +3,23 @@ import re
 import os
 from datetime import datetime
 import argparse
+import json
 
 import requests
 from kafka import KafkaProducer
 import fastavro
 
 class DataExtractor:
-    def __init__(self,pattern:str,groups):
+    def __init__(self,name:str,pattern:str,groups):
         super().__init__()
+        self.name = name
         self.pattern = re.compile(pattern)
         self.groups = groups
     
     def Get(self,s:str):
         m = re.match(self.pattern,s)
-        if m:
-            return {self.groups[i]:float(m.group(i)) for i in self.groups}
+        if m:            
+            return {s:float(float(m.group(i+1))) for i,s in enumerate(self.groups)}
         else:
             return None
        
@@ -32,35 +34,48 @@ def getNewRunId():
     run_put_response = requests.post(url, json={}).json()
     return run_put_response["id"]   
 
-def submitRunHeader(id,header):
-    payload = {}    
-    pattern = re.compile(r"(?P<build_id>_[a-f0-9]+-\d{8})\s+OPENFOAM=(?P<openfoam>\d+)\s+version=v(?P<version>\w+)")
-    match = pattern.search(header["Build"])
+import re
+from datetime import datetime
+import requests
+
+def submitRunHeader(run_id, header):
+    info_list = []
+
+    # Extract OpenFOAM build info
+    pattern = re.compile(r"(?P<build_id>_[a-f0-9]+-\d{8})\s+OPENFOAM=(?P<openfoam>\d+)\s+version=v(?P<version>\w+)")    
+    match = pattern.search(header.get("Build", ""))
     if match:
         d = match.groupdict()
-        payload["build"]=d["build_id"]
-        payload["version"]=d['version']
-        
-    payload["exec"] = header["Exec"]
-    payload["host"] = header["Host"]
-    payload["pid"] = header["PID"]
-    payload["case"] = header["Case"]
-    payload["nprocs"] = header["nProcs"]       
-    payload["time"] = datetime.strptime(header["Date"]+" " + header["Time"], r"%b %d %Y %H:%M:%S").isoformat()
+        info_list.append({"property": "build", "value": d["build_id"]})
+        info_list.append({"property": "version", "value": d["version"]})
+        info_list.append({"property": "openfoam", "value": d["openfoam"]})
 
-    url = Base_URL + f"/runs/{id}"
-    run_put_response = requests.put(url, json=payload).json()
-    print('Sending header:')
-    for k,v in run_put_response.items():
-        print(f' {k}: [{v}]')
+    for key in ["Exec", "Host", "PID", "Case", "nProcs"]:
+        if key in header:
+            info_list.append({"property": key.lower(), "value": str(header[key])})
 
-Base_URL = "http://localhost:8001"
-Kafka_Broker = "localhost:9092"
+    if "Date" in header and "Time" in header:
+        dt = datetime.strptime(header["Date"] + " " + header["Time"], r"%b %d %Y %H:%M:%S")
+        info_list.append({"property": "time", "value": dt.isoformat()})
+    
+    url = f"{Base_URL}/runinfo/{run_id}"
+    response = requests.post(url, json=info_list)
+    response.raise_for_status()  # raise exception if HTTP error
+    runinfo_response = response.json()
+
+    print("Sent RunInfo:")
+    for info in runinfo_response:
+        print(f"  {info['property']}: [{info['value']}]")
+
+configFilePath = 'config.json'
+with open(configFilePath, 'r') as f:
+    configData = json.load(f)    
+
+Base_URL = configData["Runs_Registry"]
+Kafka_Broker = configData["Broker"]
 
 parser = argparse.ArgumentParser()
 parser.add_argument("file", help="Log file name to consume")
-parser.add_argument("--broker", help=f"Kafka broker address and port (default: {Kafka_Broker})" , default=Kafka_Broker)
-parser.add_argument("--runs_registry", help=f"Api for registering run (default: {Base_URL})", default=Base_URL)
 args = parser.parse_args()
 
 if not args.file:
@@ -69,7 +84,7 @@ if not args.file:
 if not os.path.exists(args.file):
     raise FileNotFoundError("Log file was not found")
 
-with open(r".\consumer\app\EventRecord.avsc", "r") as f:
+with open(r"EventRecord.avsc", "r") as f:
     schema = fastavro.parse_schema(eval(f.read()))
 
 # Kafka producer
@@ -85,17 +100,14 @@ print(f'Run registerd as {run_id}')
 
 ignored_prefixes = [r'//',r'/*',r'\*',r'|']
 
-number_pattern = r"[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?"
+extractors = []
 
-extractors = {}
-
-extractors["cont"] = DataExtractor(
-    rf"^time step continuity errors\s+:\s+sum local\s+=\s+({number_pattern}),\s+global\s+=\s+({number_pattern}),\s+cumulative\s+=\s+({number_pattern})",
-    {1:"cont_err_local",2:"cont_err_global",3:"cont_err_cumulative"}
-    )
+for ex in configData["extractors"]:
+    extractors.append(DataExtractor(ex["name"],ex["pattern"],ex["groups"]))
 
 header_done = False
 header = {key:None for key in ["Build","Exec","Date","Time","PID","Case","nProcs","Host"]}
+ignored_Lines = 0
 try:
     iters = {}
     with open(args.file, "r") as file:               
@@ -104,6 +116,7 @@ try:
             event = line.strip()
 
             if event=='' or any(event.startswith(p) for p in ignored_prefixes):
+                ignored_Lines+=1
                 continue
             
             if (header_done==False and (event.lower()=="create time" or all(value is not None for value in header.values()))):
@@ -126,7 +139,7 @@ try:
                 if (i % 1000 == 0): print(f'Sent t={sim_time}')
                 continue            
                 
-            for extName,ext in extractors.items():
+            for ext in extractors:
                 m = ext.Get(event)
                 if m is not None:
                     message = {"run_id":run_id, "sim_time":sim_time}
@@ -141,6 +154,9 @@ try:
 
 
 except FileNotFoundError:
-    print("Error: The file 'your_file.txt' was not found.")
-#except Exception as e:
-#    print(f"An error occurred: {e}")
+    print(f"Error: The file '{args.file}' was not found.")
+except Exception as e:
+    print(f"An error occurred: {e}")
+
+print(f"Ignored lines: {ignored_Lines}")
+print(f"Times sent: {i}")
