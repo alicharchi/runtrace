@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel
 from fastapi import FastAPI, Depends, Query, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationship
 
 # -------------------------------
@@ -48,6 +49,9 @@ class EventsReduced(BaseModel):
     sim_time: float
     value: float
 
+class EventsSeries(BaseModel):
+    iter: Optional[int] = None
+    points: List[EventsReduced]
 
 class RunInfo(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -81,6 +85,14 @@ def get_session():
 # FastAPI app
 # -------------------------------
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.on_event("startup")
 def on_startup():
@@ -172,30 +184,97 @@ def create_events(
 
 @app.get("/events", response_model=List[Events])
 def get_events(session: Session = Depends(get_session)):
-    statement = select(Events)
-    return session.exec(statement).all()
+    statement = select(Events)    
+    stmt = select(Events).order_by(Events.sim_time)
+    return session.exec(stmt).all()
 
-@app.get("/events/filter", response_model=List[EventsReduced])
+MAX_POINTS = 1000
+
+@app.get("/events/filter", response_model=Union[List[EventsReduced], List[EventsSeries]])
 def get_events_by_parameter(
-    parameter: Optional[str] = Query(None, description="Filter by parameter"),
-    runid: Optional[int] = Query(None, description="Filter by runid"),
-    iter: Optional[int] = Query(None, description="Filter by iteration"),
-    time_min: Optional[float] = Query(0, description="Filter by min_time"),
-    time_max: Optional[float] = Query(-1, description="Filter by max_time"),
-    session: Session = Depends(get_session)
+    parameter: Optional[str] = Query(None),
+    runid: Optional[int] = Query(None),
+    iter: Optional[int] = Query(None),
+    time_min: float = Query(0),
+    time_max: float = Query(-1),
+    session: Session = Depends(get_session),
 ):
-    if not (parameter and runid and iter):
+    if parameter is None or runid is None:
         return []
 
-    stmt = select(Events.sim_time, Events.value).where(
-        (Events.parameter == parameter) &
-        (Events.run_id == runid) &
-        (Events.iter == iter) &
-        (Events.sim_time >= time_min)
+    MAX_POINTS = 100
+
+    if iter is not None:
+        # Single iter (old behavior)
+        stmt = (
+            select(Events.sim_time, Events.value)
+            .where(
+                Events.parameter == parameter,
+                Events.run_id == runid,
+                Events.iter == iter,
+                Events.sim_time >= time_min,
+            )
+            .order_by(Events.sim_time.desc())
+            .limit(MAX_POINTS)
+        )
+
+        if time_max != -1:
+            stmt = stmt.where(Events.sim_time <= time_max)
+
+        rows = session.exec(stmt).all()
+        rows.reverse()
+        return [EventsReduced(sim_time=t, value=v) for t, v in rows]
+
+    else:
+        # No iter specified → return all iters
+        stmt = select(Events.sim_time, Events.value, Events.iter).where(
+            Events.parameter == parameter,
+            Events.run_id == runid,
+            Events.sim_time >= time_min,
+        )
+
+        if time_max != -1:
+            stmt = stmt.where(Events.sim_time <= time_max)
+
+        # fetch a lot, will limit per iter after
+        rows = session.exec(stmt.order_by(Events.sim_time.desc())).all()
+
+        # group by iter
+        series_dict = {}
+        for t, v, it in rows:
+            series_dict.setdefault(it, []).append((t, v))
+
+        result = []
+        for it, pts in series_dict.items():
+            pts = list(reversed(pts[:MAX_POINTS]))
+            result.append(EventsSeries(
+                iter=it,
+                points=[EventsReduced(sim_time=t, value=v) for t, v in pts]
+            ))
+
+        return result
+
+@app.get("/parameters", response_model=List[str])
+def get_parameters(session: Session = Depends(get_session)):
+    statement = (
+        select(Events.parameter)
+        .distinct()
+        .order_by(Events.parameter)
     )
+    return session.exec(statement).all()
 
-    if time_max != -1:
-        stmt = stmt.where(Events.sim_time <= time_max)
+@app.get("/iters", response_model=List[int])
+def get_iters(
+    runid: Optional[int] = Query(None),
+    parameter: Optional[str] = Query(None),
+    session: Session = Depends(get_session),
+):
+    stmt = select(Events.iter).distinct()
 
-    results = session.exec(stmt).all()
-    return [EventsReduced(sim_time=row[0], value=row[1]) for row in results]
+    if runid is not None:
+        stmt = stmt.where(Events.run_id == runid)
+    if parameter is not None:
+        stmt = stmt.where(Events.parameter == parameter)
+
+    stmt = stmt.order_by(Events.iter)
+    return session.exec(stmt).all()
