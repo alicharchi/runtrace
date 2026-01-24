@@ -2,3 +2,4 @@
 data/
 .vscode/
 QtGUI/build/
+frontend/project/.vite/
