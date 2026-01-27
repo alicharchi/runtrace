@@ -9,7 +9,7 @@ services:
       db:
         condition: service_healthy        
     networks:
-      - kafka_network
+      - dev_network
     environment:
       BOOTSTRAP_SERVERS: kafka:9093
     secrets:
@@ -42,7 +42,7 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - kafka_network     
+      - dev_network
     volumes:
       - kafka-data:/var/lib/kafka/data
   db:
@@ -62,7 +62,7 @@ services:
       ports:
         - "5432:5432"
       networks:
-        - kafka_network             
+        - dev_network
       healthcheck:
         test: ["CMD", "pg_isready"]
         interval: 10s
@@ -85,12 +85,13 @@ services:
     secrets:
       - db-password
     networks:
-      - kafka_network
+      - dev_network
     develop:
       watch:
         - action: rebuild
           path: .    
   frontend:
+    container_name: frontend
     build:
       context: ./frontend
     ports:
@@ -103,7 +104,7 @@ services:
     depends_on:
       - backend
     networks:
-      - kafka_network
+      - dev_network
 volumes:
   db-data:  
   kafka-data:
@@ -111,5 +112,5 @@ secrets:
   db-password:
     file: db/password.txt
 networks:
-  kafka_network:
+  dev_network:
     driver: bridge
