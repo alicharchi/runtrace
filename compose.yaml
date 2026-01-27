@@ -45,7 +45,6 @@ services:
       - kafka_network     
     volumes:
       - kafka-data:/var/lib/kafka/data
-
   db:
       image: postgres:18
       container_name: postgres-db
@@ -69,7 +68,6 @@ services:
         interval: 10s
         timeout: 5s
         retries: 5
-
   backend:
     container_name: backend
     build:
@@ -92,6 +90,20 @@ services:
       watch:
         - action: rebuild
           path: .    
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - backend
+    networks:
+      - kafka_network
 volumes:
   db-data:  
   kafka-data:

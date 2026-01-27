@@ -102,6 +102,10 @@ def on_startup():
 # Endpoints
 # -------------------------------
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 @app.post("/runs/", response_model=Runs)
 def create_run(run: RunsCreate, session: Session = Depends(get_session)):
     db_run = Runs(**run.dict())
