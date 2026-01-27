@@ -1,13 +1,11 @@
-import io
 import re
 import os
 from datetime import datetime
 import argparse
 import json
-
+from pathlib import Path
 import requests
-from kafka import KafkaProducer
-import fastavro
+from Shared.transmitters import KafkaTransmitter
 
 class DataExtractor:
     def __init__(self,name:str,pattern:str,groups):
@@ -22,11 +20,6 @@ class DataExtractor:
             return {s:float(float(m.group(i+1))) for i,s in enumerate(self.groups)}
         else:
             return None
-       
-def encode_avro_record(record: dict, schema: dict) -> bytes:
-    bytes_writer = io.BytesIO()
-    fastavro.schemaless_writer(bytes_writer, schema, record)
-    return bytes_writer.getvalue()
 
 def getNewRunId():
     # Get run id
@@ -67,7 +60,7 @@ def submitRunHeader(run_id, header):
     for info in runinfo_response:
         print(f"  {info['property']}: [{info['value']}]")
 
-configFilePath = 'config.json'
+configFilePath = Path(__file__).parent /'config.json'
 with open(configFilePath, 'r') as f:
     configData = json.load(f)    
 
@@ -83,14 +76,6 @@ if not args.file:
 
 if not os.path.exists(args.file):
     raise FileNotFoundError("Log file was not found")
-
-with open(r"EventRecord.avsc", "r") as f:
-    schema = fastavro.parse_schema(eval(f.read()))
-
-# Kafka producer
-producer = KafkaProducer(
-    bootstrap_servers=Kafka_Broker
-)
 
 sim_time = 0.0
 
@@ -112,46 +97,43 @@ try:
     iters = {}
     with open(args.file, "r") as file:               
         i = 0
-        for line in file:            
-            event = line.strip()
+        with KafkaTransmitter(Kafka_Broker) as tx:
+            for line in file:            
+                event = line.strip()
 
-            if event=='' or any(event.startswith(p) for p in ignored_prefixes):
-                ignored_Lines+=1
-                continue
-            
-            if (header_done==False and (event.lower()=="create time" or all(value is not None for value in header.values()))):
-                header_done=True
-                submitRunHeader(run_id,header)
-                continue
-
-            if (header_done==False):
-                if (":" in event):
-                    key, value = (s.strip() for s in event.split(":", 1))
-                    if (key in header):
-                        header[key]=value
-                continue
+                if event=='' or any(event.startswith(p) for p in ignored_prefixes):
+                    ignored_Lines+=1
+                    continue
                 
-            m = re.match(r"^Time\s+=\s+([-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?)",event)
-            if m:
-                sim_time = float(m.group(1))
-                iters = {k: 0 for k in iters}
-                i+=1
-                if (i % 1000 == 0): print(f'Sent t={sim_time}')
-                continue            
-                
-            for ext in extractors:
-                m = ext.Get(event)
-                if m is not None:
-                    message = {"run_id":run_id, "sim_time":sim_time}
-                    for key,value in m.items():                        
-                        iters[key] = iters.get(key, 0) + 1
-                        kv = {"parameter":key, "value":value, "iter":iters[key]}                        
-                        encoded_message = encode_avro_record(message | kv, schema)
-                        producer.send("events", value=encoded_message)
-                break
-            
-        producer.flush()
+                if (header_done==False and (event.lower()=="create time" or all(value is not None for value in header.values()))):
+                    header_done=True
+                    submitRunHeader(run_id,header)
+                    continue
 
+                if (header_done==False):
+                    if (":" in event):
+                        key, value = (s.strip() for s in event.split(":", 1))
+                        if (key in header):
+                            header[key]=value
+                    continue
+                    
+                m = re.match(r"^Time\s+=\s+([-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?)",event)
+                if m:
+                    sim_time = float(m.group(1))
+                    iters = {k: 0 for k in iters}
+                    i+=1
+                    if (i % 1000 == 0): print(f'Sent t={sim_time}')
+                    continue            
+                    
+                for ext in extractors:
+                    m = ext.Get(event)
+                    if m is not None:
+                        message = {"run_id":run_id, "sim_time":sim_time}
+                        for key,value in m.items():                        
+                            iters[key] = iters.get(key, 0) + 1
+                            kv = {"parameter":key, "value":value, "iter":iters[key]}                        
+                            tx.Transmit(message | kv , "events")
+                    break
 
 except FileNotFoundError:
     print(f"Error: The file '{args.file}' was not found.")

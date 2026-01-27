@@ -1,0 +1,25 @@
+import logging
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from datetime import datetime
+
+LOG_DIR = Path("/app/data")
+LOG_FILE = LOG_DIR / f"consumerlogs_{datetime.now():%Y%m%d_%H%M%S}.log"
+
+def setup_logging():
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    handler = RotatingFileHandler(
+        filename=str(LOG_FILE),
+        maxBytes=10 * 1024 * 1024,  
+        backupCount=5,              
+        encoding="utf-8",
+    )
+
+    formatter = logging.Formatter(
+        "%(asctime)s %(levelname)s %(name)s: %(message)s"
+    )
+    handler.setFormatter(formatter)
+
+    logger.addHandler(handler)

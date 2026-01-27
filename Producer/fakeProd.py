@@ -1,16 +1,10 @@
-import io
 from datetime import datetime
 import argparse
 import numpy as np
-
+from pathlib import Path
 import requests
-from kafka import KafkaProducer
-import fastavro
-       
-def encode_avro_record(record: dict, schema: dict) -> bytes:
-    bytes_writer = io.BytesIO()
-    fastavro.schemaless_writer(bytes_writer, schema, record)
-    return bytes_writer.getvalue()
+
+from Shared.transmitters import KafkaTransmitter
 
 def getNewRunId():
     # Get run id
@@ -49,14 +43,6 @@ parser.add_argument("--broker", help=f"Kafka broker address and port (default: {
 parser.add_argument("--runs_registry", help=f"Api for registering run (default: {Base_URL})", default=Base_URL)
 args = parser.parse_args()
 
-with open(r"EventRecord.avsc", "r") as f:
-    schema = fastavro.parse_schema(eval(f.read()))
-
-# Kafka producer
-producer = KafkaProducer(
-    bootstrap_servers=Kafka_Broker
-)
-
 # Get run id
 run_id = getNewRunId()
 print(f'Run registerd as {run_id}')
@@ -69,20 +55,19 @@ b = 0.1
 sim_time = 0.0
 i = 0
 submitRunHeader(run_id)
-while (sim_time<=args.endTime):
-    for p in parameters:    
-        a = baselines[p]
-        rng = np.random.default_rng()
-        message = {"run_id":run_id, "sim_time":sim_time, "parameter":p}
-        for iter in range(1,args.iters+1):
-            value = a * np.sin(2 * np.pi * freq * sim_time) + rng.uniform(-b, b)                
-            kv = {"value":value, "iter":iter}
-            encoded_message = encode_avro_record(message | kv, schema)
-            producer.send("events", value=encoded_message)
-        
-    if (i % 10 == 0): print(f'Sent t={sim_time:0.2f}')
 
-    sim_time+=args.stepSize
-    i+=1
+with KafkaTransmitter(Kafka_Broker) as tx:
+    while (sim_time<=args.endTime):
+        for p in parameters:    
+            a = baselines[p]
+            rng = np.random.default_rng()
+            message = {"run_id":run_id, "sim_time":sim_time, "parameter":p}
+            for iter in range(1,args.iters+1):
+                value = a * np.sin(2 * np.pi * freq * sim_time) + rng.uniform(-b, b)                
+                kv = {"value":value, "iter":iter}
+                tx.Transmit(message | kv , "events")
+            
+        if (i % 10 == 0): print(f'Sent t={sim_time:0.2f}')
 
-producer.flush()
+        sim_time+=args.stepSize
+        i+=1
