@@ -27,7 +27,7 @@ def decode_msg(msg):
         raise ValueError("Unsupported version")
     return event
 
-# Ensure logging is configured only once
+
 if not logging.getLogger().handlers:
     setup_logging()
 
@@ -80,7 +80,7 @@ try:
         "events",
         bootstrap_servers=[bootstrap],
         group_id="g1",
-        auto_offset_reset="earliest",
+        auto_offset_reset="earliest"
     )
 
     logger.info("Getting messages")
