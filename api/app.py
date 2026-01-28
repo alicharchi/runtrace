@@ -192,8 +192,6 @@ def get_events(session: Session = Depends(get_session)):
     stmt = select(Events).order_by(Events.sim_time)
     return session.exec(stmt).all()
 
-MAX_POINTS = 1000
-
 @app.get("/events/filter", response_model=Union[List[EventsReduced], List[EventsSeries]])
 def get_events_by_parameter(
     parameter: Optional[str] = Query(None),
@@ -206,10 +204,9 @@ def get_events_by_parameter(
     if parameter is None or runid is None:
         return []
 
-    MAX_POINTS = 100
+    MAX_POINTS = 5000
 
-    if iter is not None:
-        # Single iter (old behavior)
+    if iter is not None:        
         stmt = (
             select(Events.sim_time, Events.value)
             .where(
@@ -229,8 +226,7 @@ def get_events_by_parameter(
         rows.reverse()
         return [EventsReduced(sim_time=t, value=v) for t, v in rows]
 
-    else:
-        # No iter specified → return all iters
+    else:        
         stmt = select(Events.sim_time, Events.value, Events.iter).where(
             Events.parameter == parameter,
             Events.run_id == runid,

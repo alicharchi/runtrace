@@ -65,7 +65,7 @@ export default function App() {
         setVisibleIters={setVisibleIters}
       />
 
-      <Plot series={series} visibleIters={visibleIters} />
+      <Plot series={series} visibleIters={visibleIters}  yVarName={parameter}/>
     </div>
   );
 }
