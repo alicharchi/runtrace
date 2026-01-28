@@ -1,40 +1,44 @@
+import { Button, ButtonGroup, Form } from "react-bootstrap";
+
 export default function IterToggles({ series, visibleIters, setVisibleIters }) {
   const showAll = () => {
     const next = {};
-    series.forEach(s => (next[s.iter] = true));
+    series.forEach((s) => (next[s.iter] = true));
     setVisibleIters(next);
   };
 
   const hideAll = () => {
     const next = {};
-    series.forEach(s => (next[s.iter] = false));
+    series.forEach((s) => (next[s.iter] = false));
     setVisibleIters(next);
   };
 
   return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ marginBottom: 5 }}>
-        <button onClick={showAll}>Show all</button>
-        <button onClick={hideAll} style={{ marginLeft: 10 }}>
+    <div className="w-100 mb-3">
+      <ButtonGroup className="mb-2">
+        <Button size="sm" onClick={showAll}>
+          Show all
+        </Button>
+        <Button size="sm" variant="outline-secondary" onClick={hideAll}>
           Hide all
-        </button>
-      </div>
+        </Button>
+      </ButtonGroup>
 
-      {series.map(s => (
-        <label key={s.iter} style={{ marginRight: 10 }}>
-          <input
+      <Form className="d-flex flex-wrap gap-2">
+        {series.map((s) => (
+          <Form.Check
+            inline
+            key={s.iter}
             type="checkbox"
+            id={`iter-${s.iter}`}
+            label={`iter ${s.iter}`}
             checked={visibleIters[s.iter] ?? true}
             onChange={() =>
-              setVisibleIters(v => ({
-                ...v,
-                [s.iter]: !v[s.iter],
-              }))
+              setVisibleIters((v) => ({ ...v, [s.iter]: !v[s.iter] }))
             }
           />
-          iter {s.iter}
-        </label>
-      ))}
+        ))}
+      </Form>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import Controls from "./components/Controls";
 import IterToggles from "./components/IterToggles";
 import Plot from "./components/Plot";
 import { fetchRuns, fetchParameters, fetchSeries } from "./api";
+import { Container, Row, Col } from "react-bootstrap"; // ✅ Bootstrap layout
 
 export default function App() {
   const [runs, setRuns] = useState([]);
@@ -26,17 +27,17 @@ export default function App() {
 
     const fetchData = () => {
       fetchSeries({ runId, parameter })
-        .then(d => {
+        .then((d) => {
           setSeries(d || []);
 
           // auto-enable new iters
           const vis = {};
-          (d || []).forEach(s => {
+          (d || []).forEach((s) => {
             vis[s.iter] = visibleIters[s.iter] ?? true;
           });
-          setVisibleIters(v => ({ ...vis, ...v }));
+          setVisibleIters((v) => ({ ...vis, ...v }));
         })
-        .catch(err => console.error(err));
+        .catch((err) => console.error(err));
     };
 
     fetchData();
@@ -45,27 +46,40 @@ export default function App() {
   }, [runId, parameter, refreshSec]);
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Simulation Viewer</h2>
+    <Container fluid className="p-4">
+      <h2 className="mb-4">Simulation Viewer</h2>
 
-      <Controls
-        runs={runs}
-        parameters={parameters}
-        runId={runId}
-        setRunId={setRunId}
-        parameter={parameter}
-        setParameter={setParameter}
-        refreshSec={refreshSec}
-        setRefreshSec={setRefreshSec}
-      />
+      <Row className="mb-3">
+        <Col xs={12}>
+          <Controls
+            runs={runs}
+            parameters={parameters}
+            runId={runId}
+            setRunId={setRunId}
+            parameter={parameter}
+            setParameter={setParameter}
+            refreshSec={refreshSec}
+            setRefreshSec={setRefreshSec}
+          />
+        </Col>
+      </Row>
 
-      <IterToggles
-        series={series}
-        visibleIters={visibleIters}
-        setVisibleIters={setVisibleIters}
-      />
+      <Row className="mb-3">
+        <Col xs={12}>
+          <IterToggles
+            series={series}
+            visibleIters={visibleIters}
+            setVisibleIters={setVisibleIters}
+          />
+        </Col>
+      </Row>
 
-      <Plot series={series} visibleIters={visibleIters}  yVarName={parameter}/>
-    </div>
+      <Row>
+        <Col xs={12}>
+          <Plot series={series} visibleIters={visibleIters} yVarName={parameter} />
+        </Col>
+      </Row>
+    </Container>
+
   );
 }
