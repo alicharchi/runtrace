@@ -1,26 +1,14 @@
 import { useEffect, useState } from "react";
-import { Row, Col, Form } from "react-bootstrap"; // ✅ Bootstrap form components
+import { Row, Col, Form } from "react-bootstrap";
 
-export default function Controls({
+export function TopControls({
   runs,
   parameters,
   runId,
   setRunId,
   parameter,
-  setParameter,
-  refreshSec,
-  setRefreshSec,
+  setParameter
 }) {
-  const [localRefresh, setLocalRefresh] = useState(refreshSec);
-
-  // Debounce refresh changes
-  useEffect(() => {
-    const id = setTimeout(() => {
-      setRefreshSec(localRefresh);
-    }, 500);
-    return () => clearTimeout(id);
-  }, [localRefresh]);
-
   return (
     <Form>
       <Row className="align-items-center">
@@ -51,10 +39,34 @@ export default function Controls({
             </Form.Select>
           </Form.Group>
         </Col>
+      </Row>
+    </Form>
+  );
+}
 
+export function BottomControls({ refreshSec, setRefreshSec, lastRefresh }) {
+  const [localRefresh, setLocalRefresh] = useState(refreshSec);
+
+  // Debounce refresh changes
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setRefreshSec(localRefresh);
+    }, 500);
+    return () => clearTimeout(id);
+  }, [localRefresh]);
+
+  // Format the lastRefresh date nicely
+  const formatTime = (date) => {
+    if (!date) return "--:--:--";
+    return new Date(date).toLocaleTimeString();
+  };
+
+  return (
+    <Form>
+      <Row className="align-items-center">
         <Col xs="12" md="4" className="mb-2">
           <Form.Group>
-            <Form.Label>Refresh (seconds)</Form.Label>
+            <Form.Label>Refresh: </Form.Label>
             <Form.Select
               value={localRefresh}
               onChange={(e) => setLocalRefresh(Number(e.target.value))}
@@ -66,6 +78,15 @@ export default function Controls({
               ))}
             </Form.Select>
           </Form.Group>
+        </Col>
+
+        {/* Timestamp moves to the right on md+ screens, below on xs */}
+        <Col
+          xs="12"
+          md="8"
+          className="mb-2 d-flex justify-content-md-end align-items-center"
+        >
+          <span>Last refreshed: {formatTime(lastRefresh)}</span>
         </Col>
       </Row>
     </Form>

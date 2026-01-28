@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import Controls from "./components/Controls";
+import { Container, Row, Col } from "react-bootstrap";
+import { TopControls } from "./components/Controls";
+import { BottomControls } from "./components/Controls";
 import IterToggles from "./components/IterToggles";
 import Plot from "./components/Plot";
 import { fetchRuns, fetchParameters, fetchSeries } from "./api";
-import { Container, Row, Col } from "react-bootstrap"; // ✅ Bootstrap layout
 
 export default function App() {
   const [runs, setRuns] = useState([]);
@@ -14,6 +15,7 @@ export default function App() {
   const [parameter, setParameter] = useState("");
   const [refreshSec, setRefreshSec] = useState(2);
   const [visibleIters, setVisibleIters] = useState({});
+  const [lastRefresh, setLastRefresh] = useState(null);
 
   // Initial metadata fetch
   useEffect(() => {
@@ -36,6 +38,9 @@ export default function App() {
             vis[s.iter] = visibleIters[s.iter] ?? true;
           });
           setVisibleIters((v) => ({ ...vis, ...v }));
+
+          // ✅ Update last refresh timestamp
+          setLastRefresh(new Date());
         })
         .catch((err) => console.error(err));
     };
@@ -50,22 +55,20 @@ export default function App() {
       <h2 className="mb-4">Simulation Viewer</h2>
 
       <Row className="mb-3">
-        <Col xs={12}>
-          <Controls
+        <Col>
+          <TopControls
             runs={runs}
             parameters={parameters}
             runId={runId}
             setRunId={setRunId}
             parameter={parameter}
             setParameter={setParameter}
-            refreshSec={refreshSec}
-            setRefreshSec={setRefreshSec}
           />
         </Col>
       </Row>
 
       <Row className="mb-3">
-        <Col xs={12}>
+        <Col>
           <IterToggles
             series={series}
             visibleIters={visibleIters}
@@ -74,12 +77,20 @@ export default function App() {
         </Col>
       </Row>
 
-      <Row>
-        <Col xs={12}>
+      <Row className="mb-3">
+        <Col>
           <Plot series={series} visibleIters={visibleIters} yVarName={parameter} />
+        </Col>
+      </Row>      
+      <Row>
+        <Col>
+          <BottomControls
+            refreshSec={refreshSec}
+            setRefreshSec={setRefreshSec}
+            lastRefresh={lastRefresh}
+          />
         </Col>
       </Row>
     </Container>
-
   );
 }
