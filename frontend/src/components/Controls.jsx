@@ -1,20 +1,16 @@
 import { useEffect, useState } from "react";
 import { Row, Col, Form } from "react-bootstrap";
 
-export function TopControls({
-  runs,
-  parameters,
-  runId,
-  setRunId,
-  parameter,
-  setParameter
-}) {
+export function TopControls({ runs, parameters, runId, setRunId, parameter, setParameter }) {
   return (
     <Form>
       <Row className="align-items-center">
+        {/* Run Dropdown */}
         <Col xs="12" md="4" className="mb-2">
-          <Form.Group>
-            <Form.Label>Run</Form.Label>
+          <Form.Group className="d-flex align-items-center">
+            <Form.Label className="me-2 mb-0" style={{ minWidth: "80px" }}>
+              Run:
+            </Form.Label>
             <Form.Select value={runId} onChange={(e) => setRunId(e.target.value)}>
               <option value="">Select run</option>
               {runs.map((r) => (
@@ -26,9 +22,12 @@ export function TopControls({
           </Form.Group>
         </Col>
 
+        {/* Parameter Dropdown */}
         <Col xs="12" md="4" className="mb-2">
-          <Form.Group>
-            <Form.Label>Parameter</Form.Label>
+          <Form.Group className="d-flex align-items-center">
+            <Form.Label className="me-2 mb-0" style={{ minWidth: "80px" }}>
+              Parameter:
+            </Form.Label>
             <Form.Select value={parameter} onChange={(e) => setParameter(e.target.value)}>
               <option value="">Select parameter</option>
               {parameters.map((p) => (
@@ -64,9 +63,12 @@ export function BottomControls({ refreshSec, setRefreshSec, lastRefresh }) {
   return (
     <Form>
       <Row className="align-items-center">
+        {/* Refresh Dropdown */}
         <Col xs="12" md="4" className="mb-2">
-          <Form.Group>
-            <Form.Label>Refresh: </Form.Label>
+          <Form.Group className="d-flex align-items-center">
+            <Form.Label className="me-2 mb-0" style={{ minWidth: "80px" }}>
+              Refresh:
+            </Form.Label>
             <Form.Select
               value={localRefresh}
               onChange={(e) => setLocalRefresh(Number(e.target.value))}
@@ -80,7 +82,7 @@ export function BottomControls({ refreshSec, setRefreshSec, lastRefresh }) {
           </Form.Group>
         </Col>
 
-        {/* Timestamp moves to the right on md+ screens, below on xs */}
+        {/* Last Refreshed Timestamp */}
         <Col
           xs="12"
           md="8"
