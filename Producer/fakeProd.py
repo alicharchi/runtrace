@@ -1,18 +1,11 @@
 from datetime import datetime
 import argparse
 import numpy as np
-from pathlib import Path
-import requests
+from Shared.RunsLib import RunManager
 
 from Shared.transmitters import KafkaTransmitter
 
-def getNewRunId():
-    # Get run id
-    url = Base_URL + "/runs/"
-    run_put_response = requests.post(url, json={}).json()
-    return run_put_response["id"]   
-
-def submitRunHeader(run_id):
+def submitRunHeader(manager:RunManager):
     info_list = []
 
     info_list.append({"property": "build", "value": "12345"})
@@ -23,10 +16,7 @@ def submitRunHeader(run_id):
     iso_string = now.isoformat()
     info_list.append({"property": "time", "value": iso_string})
     
-    url = f"{Base_URL}/runinfo/{run_id}"
-    response = requests.post(url, json=info_list)
-    response.raise_for_status()  
-    runinfo_response = response.json()
+    runinfo_response = manager.Update(info_list)
 
     print("Sent RunInfo:")
     for info in runinfo_response:
@@ -44,7 +34,8 @@ parser.add_argument("--runs_registry", help=f"Api for registering run (default: 
 args = parser.parse_args()
 
 # Get run id
-run_id = getNewRunId()
+runManager = RunManager(Base_URL)
+run_id = runManager.Register()
 print(f'Run registerd as {run_id}')
 
 parameters = ['cont_err_cumulative','cont_err_global','cont_err_local','fake_error']
@@ -54,7 +45,7 @@ b = 0.1
 
 sim_time = 0.0
 i = 0
-submitRunHeader(run_id)
+submitRunHeader(runManager)
 
 with KafkaTransmitter(Kafka_Broker) as tx:
     while (sim_time<=args.endTime):
@@ -71,3 +62,6 @@ with KafkaTransmitter(Kafka_Broker) as tx:
 
         sim_time+=args.stepSize
         i+=1
+
+
+runManager.MarkAsEnded()

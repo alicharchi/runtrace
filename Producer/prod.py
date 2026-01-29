@@ -4,8 +4,8 @@ from datetime import datetime
 import argparse
 import json
 from pathlib import Path
-import requests
 from Shared.transmitters import KafkaTransmitter
+from Shared.RunsLib import RunManager
 
 class DataExtractor:
     def __init__(self,name:str,pattern:str,groups):
@@ -21,17 +21,7 @@ class DataExtractor:
         else:
             return None
 
-def getNewRunId():
-    # Get run id
-    url = Base_URL + "/runs/"
-    run_put_response = requests.post(url, json={}).json()
-    return run_put_response["id"]   
-
-import re
-from datetime import datetime
-import requests
-
-def submitRunHeader(run_id, header):
+def submitRunHeader(header,manager:RunManager):
     info_list = []
 
     # Extract OpenFOAM build info
@@ -51,10 +41,7 @@ def submitRunHeader(run_id, header):
         dt = datetime.strptime(header["Date"] + " " + header["Time"], r"%b %d %Y %H:%M:%S")
         info_list.append({"property": "time", "value": dt.isoformat()})
     
-    url = f"{Base_URL}/runinfo/{run_id}"
-    response = requests.post(url, json=info_list)
-    response.raise_for_status()  # raise exception if HTTP error
-    runinfo_response = response.json()
+    runinfo_response = manager.Update(info_list)
 
     print("Sent RunInfo:")
     for info in runinfo_response:
@@ -79,8 +66,9 @@ if not os.path.exists(args.file):
 
 sim_time = 0.0
 
-# Get run id
-run_id = getNewRunId()
+runManager = RunManager(Base_URL)
+run_id = runManager.Register()
+
 print(f'Run registerd as {run_id}')
 
 ignored_prefixes = [r'//',r'/*',r'\*',r'|']
@@ -107,7 +95,7 @@ try:
                 
                 if (header_done==False and (event.lower()=="create time" or all(value is not None for value in header.values()))):
                     header_done=True
-                    submitRunHeader(run_id,header)
+                    submitRunHeader(header,runManager)
                     continue
 
                 if (header_done==False):
@@ -137,8 +125,12 @@ try:
 
 except FileNotFoundError:
     print(f"Error: The file '{args.file}' was not found.")
+    runManager.MarkAsEnded(-1)
 except Exception as e:
     print(f"An error occurred: {e}")
+    runManager.MarkAsEnded(-1)
 
 print(f"Ignored lines: {ignored_Lines}")
 print(f"Times sent: {i}")
+
+runManager.MarkAsEnded()
