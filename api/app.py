@@ -19,13 +19,13 @@ def get_db_password():
 class Runs(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     time: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    status: Optional[int] = Field(default=0, primary_key=False)
     events: List["Events"] = Relationship(back_populates="run")
     runinfo: List["RunInfo"] = Relationship(back_populates="run")
 
-
 class RunsCreate(BaseModel):
     time: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
-
+    status: Optional[int] = Field(default=0, primary_key=False)
 
 class Events(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -36,14 +36,12 @@ class Events(SQLModel, table=True):
     value: float
     iter: int
 
-
 class EventsCreate(SQLModel):    
     run_id: Optional[int] = None
     sim_time: Optional[float] = None
     parameter: Optional[str] = None
     value: Optional[float] = None
     iter: Optional[int] = None
-
 
 class EventsReduced(BaseModel):
     sim_time: float
@@ -59,7 +57,6 @@ class RunInfo(SQLModel, table=True):
     run: Optional[Runs] = Relationship(back_populates="runinfo")
     property: str
     value: str
-
 
 class RunInfoCreate(SQLModel):    
     property: Optional[str] = None
@@ -108,7 +105,7 @@ def health():
 
 @app.post("/runs/", response_model=Runs)
 def create_run(run: RunsCreate, session: Session = Depends(get_session)):
-    db_run = Runs(**run.dict())
+    db_run = Runs(**run.dict() | {'status':1})
     session.add(db_run)
     session.commit()
     session.refresh(db_run)
