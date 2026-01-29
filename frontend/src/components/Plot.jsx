@@ -14,7 +14,7 @@ export default function Plot({ series, visibleIters, yVarName }) {
   return (
     <div className="w-100" style={{ height: 400 }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={series.flatMap(s => s.points)}>        
+        <LineChart data={series.flatMap((s) => s.points)}>
           <XAxis dataKey="sim_time" type="number">
             <Label
               value="Simulation Time"
@@ -22,6 +22,7 @@ export default function Plot({ series, visibleIters, yVarName }) {
               offset={-5}
             />
           </XAxis>
+
           <YAxis>
             <Label
               value={yVarName}
@@ -30,8 +31,23 @@ export default function Plot({ series, visibleIters, yVarName }) {
               style={{ textAnchor: "middle" }}
             />
           </YAxis>
+
           <Tooltip />
-          <Legend />
+
+          <Legend
+            verticalAlign="top"
+            align="right"
+            layout="vertical"
+            wrapperStyle={{
+              position: "absolute",
+              top: 20,
+              right: 20,
+              backgroundColor: "rgba(255,255,255,0.85)",
+              padding: "6px 8px",
+              borderRadius: "6px",
+              fontSize: "0.85rem",
+            }}
+          />
 
           {series.map(
             (s) =>

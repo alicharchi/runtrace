@@ -1,11 +1,40 @@
 import { useEffect, useState } from "react";
 import { Row, Col, Form } from "react-bootstrap";
+import { Button, Spinner } from "react-bootstrap";
+
+function RefreshButton() {
+  const [isLoading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) return;
+
+    const id = setTimeout(() => {
+      setLoading(false);
+    }, 2000);
+
+    return () => clearTimeout(id);
+  }, [isLoading]);
+
+  return (
+    <Button
+      variant="primary"
+      disabled={isLoading}
+      onClick={() => setLoading(true)}
+      className="d-flex align-items-center gap-2"
+    >
+      {isLoading ? (
+        <i className="bi bi-arrow-clockwise spin" />
+      ) : (
+        <i className="bi bi-arrow-clockwise" />
+      )}
+    </Button>
+  );
+}
 
 export function TopControls({ runs, parameters, runId, setRunId, parameter, setParameter }) {
   return (
     <Form>
-      <Row className="align-items-center">
-        {/* Run Dropdown */}
+      <Row className="align-items-center">        
         <Col xs="12" md="4" className="mb-2">
           <Form.Group className="d-flex align-items-center">
             <Form.Label className="me-2 mb-0" style={{ minWidth: "80px" }}>
@@ -19,10 +48,10 @@ export function TopControls({ runs, parameters, runId, setRunId, parameter, setP
                 </option>
               ))}
             </Form.Select>
+            <RefreshButton text={"A"}/>
           </Form.Group>
         </Col>
-
-        {/* Parameter Dropdown */}
+        
         <Col xs="12" md="4" className="mb-2">
           <Form.Group className="d-flex align-items-center">
             <Form.Label className="me-2 mb-0" style={{ minWidth: "80px" }}>
@@ -44,17 +73,14 @@ export function TopControls({ runs, parameters, runId, setRunId, parameter, setP
 }
 
 export function BottomControls({ refreshSec, setRefreshSec, lastRefresh }) {
-  const [localRefresh, setLocalRefresh] = useState(refreshSec);
-
-  // Debounce refresh changes
+  const [localRefresh, setLocalRefresh] = useState(refreshSec);  
   useEffect(() => {
     const id = setTimeout(() => {
       setRefreshSec(localRefresh);
     }, 500);
     return () => clearTimeout(id);
   }, [localRefresh]);
-
-  // Format the lastRefresh date nicely
+  
   const formatTime = (date) => {
     if (!date) return "--:--:--";
     return new Date(date).toLocaleTimeString();
@@ -62,8 +88,7 @@ export function BottomControls({ refreshSec, setRefreshSec, lastRefresh }) {
 
   return (
     <Form>
-      <Row className="align-items-center">
-        {/* Refresh Dropdown */}
+      <Row className="align-items-center">        
         <Col xs="12" md="4" className="mb-2">
           <Form.Group className="d-flex align-items-center">
             <Form.Label className="me-2 mb-0" style={{ minWidth: "80px" }}>
@@ -80,10 +105,8 @@ export function BottomControls({ refreshSec, setRefreshSec, lastRefresh }) {
               ))}
             </Form.Select>
           </Form.Group>
-        </Col>
-
-        {/* Last Refreshed Timestamp */}
-        <Col
+        </Col>        
+        <Col 
           xs="12"
           md="8"
           className="mb-2 d-flex justify-content-md-end align-items-center"
@@ -94,3 +117,4 @@ export function BottomControls({ refreshSec, setRefreshSec, lastRefresh }) {
     </Form>
   );
 }
+
