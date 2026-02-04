@@ -1,8 +1,10 @@
-import os
+from app_config import DB_HOST, DB_PORT, DB_NAME, DB_USER, PSWD_FILE, MSG_BROKER, LOG_LEVEL
 import logging
 from logging_config import setup_logging
 from kafka import KafkaConsumer
 from kafka.errors import NoBrokersAvailable
+
+
 
 import msgpack
 
@@ -30,17 +32,6 @@ def decode_msg(msg):
 # -------------------------------
 # Configuration
 # -------------------------------
-DB_HOST = os.getenv("DB_HOST", "db")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_NAME = os.getenv("DB_NAME", "openFoam")
-PSWD_FILE = os.getenv("PASSWORD_FILE","/run/secrets/db-password")
-
-LOG_LEVEL_STR = os.getenv("LOG_LEVEL", "INFO").upper()
-LOG_LEVEL = logging.getLevelName(LOG_LEVEL_STR)
-if not isinstance(LOG_LEVEL, int):
-    raise ValueError(f"Invalid LOG_LEVEL: {LOG_LEVEL_STR}")
-
 if not logging.getLogger().handlers:    
     setup_logging("consumer", level=LOG_LEVEL)
 
@@ -80,14 +71,13 @@ except Exception:
     raise
 
 consumer = None
-bootstrap = os.getenv("BOOTSTRAP_SERVERS", "kafka:9093")
 
 try:
-    logger.info(f"Attempting to connect to kafka broker at {bootstrap}")
+    logger.info(f"Attempting to connect to kafka broker at {MSG_BROKER}")
 
     consumer = KafkaConsumer(
         "events",
-        bootstrap_servers=[bootstrap],
+        bootstrap_servers=[MSG_BROKER],
         group_id="g1",
         auto_offset_reset="earliest"
     )
@@ -128,7 +118,7 @@ try:
 
 except NoBrokersAvailable:
     logger.error(
-        f"No Kafka brokers available at the specified address: [{bootstrap}]"
+        f"No Kafka brokers available at the specified address: [{MSG_BROKER}]"
     )
 except Exception:
     logger.exception("Unexpected runtime error")

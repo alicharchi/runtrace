@@ -1,7 +1,6 @@
-import os
 from typing import Optional, List, Union
 from datetime import datetime, timezone
-
+from app_config import DB_HOST, DB_PORT, DB_NAME, DB_USER, PSWD_FILE , ALLOWED_ORIGINS
 from pydantic import BaseModel
 from fastapi import FastAPI, Depends, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -76,11 +75,6 @@ class RunInfoCreate(SQLModel):
 # -------------------------------
 # Database Setup
 # -------------------------------
-DB_HOST = os.getenv("DB_HOST", "db")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_NAME = os.getenv("DB_NAME", "openFoam")
-PSWD_FILE = os.getenv("PASSWORD_FILE","/run/secrets/db-password")
 
 password = get_db_password()
 
@@ -98,7 +92,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
