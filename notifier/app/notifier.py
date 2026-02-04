@@ -46,12 +46,11 @@ logger = logging.getLogger(__name__)
 # -------------------------------
 # Models (READ-ONLY)
 # -------------------------------
-class Runs(SQLModel, table=True):
-    id: int = Field(primary_key=True)
+class Runs(SQLModel):
+    __tablename__ = "runs"
+    id: int
     status: int
-    exitflag: Optional[int] = None
-    email_sent: bool = False
-    endTime: Optional[datetime] = None
+    email_sent: bool
 
 # -------------------------------
 # Utilities
@@ -100,10 +99,13 @@ def claim_completed_runs(session: Session) -> list[int]:
         {"completed": RunStatus.COMPLETED}
     )
 
-    run_ids = [row[0] for row in result.fetchall()]
-    session.commit()
-
-    return run_ids
+    try:
+        run_ids = [row[0] for row in result.fetchall()]
+        session.commit()
+        return run_ids
+    except Exception:
+        session.rollback()
+        raise
 
 # -------------------------------
 # Scheduled job
