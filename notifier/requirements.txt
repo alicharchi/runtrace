@@ -1,2 +1,3 @@
 sqlmodel
 psycopg2-binary
+APScheduler>=3.10

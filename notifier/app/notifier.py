@@ -1,22 +1,29 @@
 import logging
 from logging_config import setup_logging
-from typing import Optional
-import time
-from datetime import datetime, timezone
-from typing import List
+from typing import Optional, List
+from datetime import datetime
 
-from sqlmodel import SQLModel, Field, create_engine, Session, select
-from pydantic import BaseModel
+from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 
+from sqlmodel import SQLModel, Field, create_engine, Session
+from sqlalchemy import text
+
+# -------------------------------
+# Logging
+# -------------------------------
+if not logging.getLogger().handlers:
+    setup_logging("notifier", level=logging.DEBUG)
+
+logger = logging.getLogger(__name__)
+
+# -------------------------------
+# Constants / Enums
+# -------------------------------
 class RunStatus:
     RUNNING = 1
     COMPLETED = 2
     FAILED = 3
-
-if not logging.getLogger().handlers:
-    setup_logging('notifier',level=logging.DEBUG)
-
-logger = logging.getLogger(__name__)
 
 # -------------------------------
 # Configuration
@@ -26,10 +33,10 @@ DB_HOST = "db"
 DB_PORT = "5432"
 DB_NAME = "openFoam"
 
-POLL_INTERVAL = 30  # seconds
+POLL_INTERVAL_SECONDS = 30
 
 # -------------------------------
-# Models (matching your FastAPI app)
+# Models (READ-ONLY)
 # -------------------------------
 class Runs(SQLModel, table=True):
     id: int = Field(primary_key=True)
@@ -41,52 +48,105 @@ class Runs(SQLModel, table=True):
 # -------------------------------
 # Utilities
 # -------------------------------
-def get_db_password():
+def get_db_password() -> str:
     with open("/run/secrets/db-password", "r") as f:
         return f.read().strip()
 
 def send_email(run_id: int):
-    # Placeholder: replace with actual email sending logic
-    logger.debug(f"Sending email for run {run_id}")
+    """
+    Replace this with real email logic.
+    MUST be idempotent or tolerate retries.
+    """
+    logger.info(f"Sending completion email for run {run_id}")
+    # TODO: SMTP / SendGrid / SES
 
 # -------------------------------
 # Database setup
 # -------------------------------
 db_password = get_db_password()
-connection_string = f"postgresql+psycopg2://{DB_USER}:{db_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-logger.info(f"Connecting to db: postgresql+psycopg2://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
+connection_string = (
+    f"postgresql+psycopg2://{DB_USER}:{db_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
+
 engine = create_engine(connection_string, echo=False)
 
-def get_pending_runs(session: Session) -> List[Runs]:
-    stmt = select(Runs).where(Runs.status == RunStatus.COMPLETED, Runs.email_sent == False)
-    return session.exec(stmt).all()
+# -------------------------------
+# Exactly-once logic
+# -------------------------------
+def claim_completed_runs(session: Session) -> list[int]:
+    stmt = text("""
+        UPDATE runs
+        SET email_sent = TRUE
+        WHERE id IN (
+            SELECT id
+            FROM runs
+            WHERE status = :completed
+              AND email_sent = FALSE
+            FOR UPDATE SKIP LOCKED
+        )
+        RETURNING id
+    """)
 
-def mark_email_sent(session: Session, run_id: int):
-    run = session.get(Runs, run_id)
-    logger.debug(f'Setting emailsent to true for run {run_id}')
-    if run:
-        run.email_sent = True
-        session.add(run)
-        session.commit()
+    result = session.execute(
+        stmt,
+        {"completed": RunStatus.COMPLETED}
+    )
+
+    run_ids = [row[0] for row in result.fetchall()]
+    session.commit()
+
+    return run_ids
 
 # -------------------------------
-# Worker loop
+# Scheduled job
+# -------------------------------
+def notify_completed_runs():
+    logger.debug("Polling for completed runs...")
+
+    try:
+        with Session(engine) as session:
+            run_ids = claim_completed_runs(session)
+
+            if not run_ids:
+                logger.debug("No completed runs to notify")
+                return
+
+            logger.info(f"Claimed {len(run_ids)} runs for notification")
+
+            for run_id in run_ids:
+                try:
+                    send_email(run_id)
+                except Exception:
+                    # Email failed AFTER being claimed
+                    # This is intentional: exactly-once > at-least-once
+                    logger.exception(
+                        f"Email send failed for run {run_id}. "
+                        f"Manual intervention may be required."
+                    )
+
+    except Exception:
+        logger.exception("Notifier job failed")
+
+# -------------------------------
+# Scheduler bootstrap
 # -------------------------------
 def main():
-    logger.info("Run Notifier started")
-    while True:
-        try:
-            with Session(engine) as session:
-                pending_runs = get_pending_runs(session)     
-                logger.info(f'Found {len(pending_runs)} pending runs.')           
-                for run in pending_runs:
-                    send_email(run.id)
-                    mark_email_sent(session, run.id)
+    logger.info("Run Notifier starting")
 
-        except Exception as e:
-            logger.error(f"{e}")
+    scheduler = BlockingScheduler(timezone="UTC")
 
-        time.sleep(POLL_INTERVAL)
+    scheduler.add_job(
+        notify_completed_runs,
+        trigger=IntervalTrigger(seconds=POLL_INTERVAL_SECONDS),
+        id="run_completion_notifier",
+        max_instances=1,
+        replace_existing=True,
+    )
+
+    try:
+        scheduler.start()
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Run Notifier stopped")
 
 if __name__ == "__main__":
     main()
