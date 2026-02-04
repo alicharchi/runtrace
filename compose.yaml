@@ -105,6 +105,28 @@ services:
       - backend
     networks:
       - dev_network
+  run_notifier:
+    build: ./notifier
+    container_name: run_notifier
+    restart: "always"
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=openFoam
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
+    depends_on:
+      db:
+        condition: service_healthy
+    secrets:
+      - db-password
+    networks:
+      - dev_network
+    develop:
+      watch:
+        - action: rebuild
+          path: .
+    volumes:
+      - ./data:/app/data
 volumes:
   db-data:  
   kafka-data:
