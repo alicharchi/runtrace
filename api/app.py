@@ -136,7 +136,10 @@ def run_ended(
     if not db_run:
         raise HTTPException(status_code=404, detail="Run not found")
 
-    db_run.status = RunStatus.COMPLETED
+    db_run.status = (
+        RunStatus.FAILED if payload.exitflag != 0 else RunStatus.COMPLETED
+    )
+    
     db_run.exitflag = payload.exitflag
     db_run.endTime = datetime.now(timezone.utc)
 
