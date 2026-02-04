@@ -13,19 +13,29 @@ def get_db_password():
     with open("/run/secrets/db-password", "r") as f:
         return f.read().strip()
 
+class RunStatus:
+    RUNNING = 1
+    COMPLETED = 2
+    FAILED = 3
+
 # -------------------------------
 # Models
 # -------------------------------
 class Runs(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     time: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
-    status: Optional[int] = Field(default=0, primary_key=False)
+    status: Optional[int] = Field(default=RunStatus.RUNNING)
+    exitflag: Optional[int] = Field(default=None)
+    email_sent: Optional[bool] = Field(default=False)
     events: List["Events"] = Relationship(back_populates="run")
     runinfo: List["RunInfo"] = Relationship(back_populates="run")
+    endTime: Optional[datetime] = Field(default=None)
 
 class RunsCreate(BaseModel):
     time: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
-    status: Optional[int] = Field(default=0, primary_key=False)
+
+class RunsEnd(BaseModel):        
+    exitflag: int
 
 class Events(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -105,7 +115,7 @@ def health():
 
 @app.post("/runs/", response_model=Runs)
 def create_run(run: RunsCreate, session: Session = Depends(get_session)):
-    db_run = Runs(**run.dict() | {'status':1})
+    db_run = Runs(**run.dict() | {'status':RunStatus.RUNNING})
     session.add(db_run)
     session.commit()
     session.refresh(db_run)
@@ -116,29 +126,32 @@ def get_runs(session: Session = Depends(get_session)):
     statement = select(Runs)
     return session.exec(statement).all()
 
-@app.put("/runs/{run_id}", response_model=Runs)
-def update_run(run_id: int, run_update: RunsCreate, session: Session = Depends(get_session)):
+@app.put("/runs/{run_id}/ended", response_model=Runs)
+def run_ended(
+    run_id: int,
+    payload: RunsEnd,
+    session: Session = Depends(get_session),
+):
     db_run = session.get(Runs, run_id)
     if not db_run:
-        raise HTTPException(status_code=404, detail=f"Run with id={run_id} not found")
-    update_data = run_update.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_run, key, value)
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    db_run.status = RunStatus.COMPLETED
+    db_run.exitflag = payload.exitflag
+    db_run.endTime = datetime.now(timezone.utc)
+
     session.add(db_run)
     session.commit()
     session.refresh(db_run)
+
     return db_run
 
-# -------------------------------
-# POST RunInfo
-# -------------------------------
 @app.post("/runinfo/{run_id}", response_model=List[RunInfo])
 def create_runinfo(
     run_id: int,
     info_list: List[RunInfoCreate],
     session: Session = Depends(get_session)
 ):
-    # Ensure the run exists
     run = session.get(Runs, run_id)
     if not run:
         raise HTTPException(status_code=404, detail=f"Run with id={run_id} not found")
@@ -155,9 +168,6 @@ def create_runinfo(
 
     return db_info_list
 
-# -------------------------------
-# POST Events
-# -------------------------------
 @app.post("/events/", response_model=Union[Events, List[Events]])
 def create_events(
     events: Union[EventsCreate, List[EventsCreate]],
@@ -275,3 +285,5 @@ def get_iters(
 
     stmt = stmt.order_by(Events.iter)
     return session.exec(stmt).all()
+
+

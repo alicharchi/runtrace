@@ -21,12 +21,9 @@ class RunManager:
         response.raise_for_status()
         return response.json()
     
-    def UpdateStatus(self,status)->None:
-        url = f"{self._baseURL}/runs/{self.RunId}"
+    def MarkAsEnded(self,exitFlag)->None:
+        url = f"{self._baseURL}/runs/{self.RunId}/ended"
         print(f'Sending request {url}')
-        response = requests.put(url, json={"status":str(status)})
+        response = requests.put(url, json={"exitflag":str(exitFlag)})
         response.raise_for_status()
         return response.json()
-    
-    def MarkAsEnded(self,status=2)->None:
-        return self.UpdateStatus(status)

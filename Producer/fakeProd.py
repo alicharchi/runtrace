@@ -64,4 +64,4 @@ with KafkaTransmitter(Kafka_Broker) as tx:
         i+=1
 
 
-runManager.MarkAsEnded()
+runManager.MarkAsEnded(0)

@@ -128,9 +128,9 @@ except FileNotFoundError:
     runManager.MarkAsEnded(-1)
 except Exception as e:
     print(f"An error occurred: {e}")
-    runManager.MarkAsEnded(-1)
+    runManager.MarkAsEnded(-2)
 
 print(f"Ignored lines: {ignored_Lines}")
 print(f"Times sent: {i}")
 
-runManager.MarkAsEnded()
+runManager.MarkAsEnded(0)
