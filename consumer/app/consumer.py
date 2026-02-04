@@ -18,7 +18,7 @@ from sqlalchemy import (
 )
 
 def get_db_password():
-    with open("/run/secrets/db-password", "r") as f:
+    with open(PSWD_FILE, "r") as f:
         return f.read().strip()
 
 def decode_msg(msg):
@@ -27,26 +27,35 @@ def decode_msg(msg):
         raise ValueError("Unsupported version")
     return event
 
+# -------------------------------
+# Configuration
+# -------------------------------
+DB_HOST = os.getenv("DB_HOST", "db")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_NAME = os.getenv("DB_NAME", "openFoam")
+PSWD_FILE = os.getenv("PASSWORD_FILE","/run/secrets/db-password")
 
-if not logging.getLogger().handlers:
-    setup_logging()
+LOG_LEVEL_STR = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_LEVEL = logging.getLevelName(LOG_LEVEL_STR)
+if not isinstance(LOG_LEVEL, int):
+    raise ValueError(f"Invalid LOG_LEVEL: {LOG_LEVEL_STR}")
+
+if not logging.getLogger().handlers:    
+    setup_logging("consumer", level=LOG_LEVEL)
 
 logger = logging.getLogger(__name__)
 engine = None
 
 try:
-    user = "postgres"
     password = get_db_password()
-    host = "db"
-    port = "5432"
-    database = "openFoam"
 
     connection_string = (
-        f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}"
+        f"postgresql+psycopg2://{DB_USER}:{password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
 
     logger.info(
-        f"Connecting to db: postgresql+psycopg2://{user}@{host}:{port}/{database}"
+        f"Connecting to db: postgresql+psycopg2://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
 
     engine = create_engine(connection_string)

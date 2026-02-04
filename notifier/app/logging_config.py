@@ -11,7 +11,7 @@ def setup_logging(appName:str,**kwargs):
 
     logger.setLevel(level)
     
-    logFile = logDir / f"{appName}logs_{datetime.now():%Y%m%d_%H%M%S}.log"
+    logFile = logDir / f"{appName}_logs_{datetime.now():%Y%m%d_%H%M%S}.log"
     handler = RotatingFileHandler(
         filename=str(logFile),
         maxBytes=10 * 1024 * 1024,  

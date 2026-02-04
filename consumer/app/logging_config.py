@@ -3,15 +3,17 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from datetime import datetime
 
-LOG_DIR = Path("/app/data")
-LOG_FILE = LOG_DIR / f"consumerlogs_{datetime.now():%Y%m%d_%H%M%S}.log"
-
-def setup_logging():
+def setup_logging(appName:str,**kwargs):
     logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+    
+    logDir=kwargs.get("dir", Path("/app/data"))
+    level=kwargs.get("level", logging.INFO)
 
+    logger.setLevel(level)
+    
+    logFile = logDir / f"{appName}_logs_{datetime.now():%Y%m%d_%H%M%S}.log"
     handler = RotatingFileHandler(
-        filename=str(LOG_FILE),
+        filename=str(logFile),
         maxBytes=10 * 1024 * 1024,  
         backupCount=5,              
         encoding="utf-8",

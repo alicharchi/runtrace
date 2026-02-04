@@ -1,3 +1,4 @@
+import os
 from typing import Optional, List, Union
 from datetime import datetime, timezone
 
@@ -10,7 +11,7 @@ from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationsh
 # Secrets
 # -------------------------------
 def get_db_password():
-    with open("/run/secrets/db-password", "r") as f:
+    with open(PSWD_FILE, "r") as f:
         return f.read().strip()
 
 class RunStatus:
@@ -75,13 +76,15 @@ class RunInfoCreate(SQLModel):
 # -------------------------------
 # Database Setup
 # -------------------------------
-user = 'postgres'
-password = get_db_password()
-host = 'db'
-port = '5432'
-database = 'openFoam'
+DB_HOST = os.getenv("DB_HOST", "db")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_NAME = os.getenv("DB_NAME", "openFoam")
+PSWD_FILE = os.getenv("PASSWORD_FILE","/run/secrets/db-password")
 
-connection_string = f'postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}'
+password = get_db_password()
+
+connection_string = f'postgresql+psycopg2://{DB_USER}:{password}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
 engine = create_engine(connection_string, echo=True)
 
 def get_session():

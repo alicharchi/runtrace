@@ -1,3 +1,5 @@
+import os
+
 import logging
 from logging_config import setup_logging
 from typing import Optional, List
@@ -10,14 +12,6 @@ from sqlmodel import SQLModel, Field, create_engine, Session
 from sqlalchemy import text
 
 # -------------------------------
-# Logging
-# -------------------------------
-if not logging.getLogger().handlers:
-    setup_logging("notifier", level=logging.DEBUG)
-
-logger = logging.getLogger(__name__)
-
-# -------------------------------
 # Constants / Enums
 # -------------------------------
 class RunStatus:
@@ -28,12 +22,26 @@ class RunStatus:
 # -------------------------------
 # Configuration
 # -------------------------------
-DB_USER = "postgres"
-DB_HOST = "db"
-DB_PORT = "5432"
-DB_NAME = "openFoam"
+DB_HOST = os.getenv("DB_HOST", "db")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_NAME = os.getenv("DB_NAME", "openFoam")
+PSWD_FILE = os.getenv("PASSWORD_FILE","/run/secrets/db-password")
 
-POLL_INTERVAL_SECONDS = 30
+POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL", "60"))
+
+LOG_LEVEL_STR = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_LEVEL = logging.getLevelName(LOG_LEVEL_STR)
+if not isinstance(LOG_LEVEL, int):
+    raise ValueError(f"Invalid LOG_LEVEL: {LOG_LEVEL_STR}")
+
+# -------------------------------
+# Logging
+# -------------------------------
+if not logging.getLogger().handlers:
+    setup_logging("notifier", level=LOG_LEVEL)
+
+logger = logging.getLogger(__name__)
 
 # -------------------------------
 # Models (READ-ONLY)
@@ -49,7 +57,7 @@ class Runs(SQLModel, table=True):
 # Utilities
 # -------------------------------
 def get_db_password() -> str:
-    with open("/run/secrets/db-password", "r") as f:
+    with open(PSWD_FILE, "r") as f:
         return f.read().strip()
 
 def send_email(run_id: int):
