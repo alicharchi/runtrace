@@ -1,6 +1,6 @@
 from typing import Optional, List, Union
 from datetime import datetime, timezone
-from app_config import DB_HOST, DB_PORT, DB_NAME, DB_USER, PSWD_FILE , ALLOWED_ORIGINS
+from app_config import CONFIG
 from pydantic import BaseModel
 from fastapi import FastAPI, Depends, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +10,7 @@ from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationsh
 # Secrets
 # -------------------------------
 def get_db_password():
-    with open(PSWD_FILE, "r") as f:
+    with open(CONFIG.PSWD_FILE, "r") as f:
         return f.read().strip()
 
 class RunStatus:
@@ -78,7 +78,7 @@ class RunInfoCreate(SQLModel):
 
 password = get_db_password()
 
-connection_string = f'postgresql+psycopg2://{DB_USER}:{password}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
+connection_string = f'postgresql+psycopg2://{CONFIG.DB_USER}:{password}@{CONFIG.DB_HOST}:{CONFIG.DB_PORT}/{CONFIG.DB_NAME}'
 engine = create_engine(connection_string, echo=True)
 
 def get_session():
@@ -92,7 +92,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=CONFIG.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

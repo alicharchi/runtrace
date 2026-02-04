@@ -1,4 +1,4 @@
-from app_config import DB_HOST, DB_PORT, DB_NAME, DB_USER, PSWD_FILE, MSG_BROKER, LOG_LEVEL
+from app_config import CONFIG
 import logging
 from logging_config import setup_logging
 from kafka import KafkaConsumer
@@ -20,7 +20,7 @@ from sqlalchemy import (
 )
 
 def get_db_password():
-    with open(PSWD_FILE, "r") as f:
+    with open(CONFIG.PSWD_FILE, "r") as f:
         return f.read().strip()
 
 def decode_msg(msg):
@@ -33,7 +33,7 @@ def decode_msg(msg):
 # Configuration
 # -------------------------------
 if not logging.getLogger().handlers:    
-    setup_logging("consumer", level=LOG_LEVEL)
+    setup_logging("consumer", level=CONFIG.LOG_LEVEL)
 
 logger = logging.getLogger(__name__)
 engine = None
@@ -42,11 +42,11 @@ try:
     password = get_db_password()
 
     connection_string = (
-        f"postgresql+psycopg2://{DB_USER}:{password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+        f"postgresql+psycopg2://{CONFIG.DB_USER}:{password}@{CONFIG.DB_HOST}:{CONFIG.DB_PORT}/{CONFIG.DB_NAME}"
     )
 
     logger.info(
-        f"Connecting to db: postgresql+psycopg2://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+        f"Connecting to db: postgresql+psycopg2://{CONFIG.DB_USER}@{CONFIG.DB_HOST}:{CONFIG.DB_PORT}/{CONFIG.DB_NAME}"
     )
 
     engine = create_engine(connection_string)
@@ -73,11 +73,11 @@ except Exception:
 consumer = None
 
 try:
-    logger.info(f"Attempting to connect to kafka broker at {MSG_BROKER}")
+    logger.info(f"Attempting to connect to kafka broker at {CONFIG.MSG_BROKER}")
 
     consumer = KafkaConsumer(
         "events",
-        bootstrap_servers=[MSG_BROKER],
+        bootstrap_servers=[CONFIG.MSG_BROKER],
         group_id="g1",
         auto_offset_reset="earliest"
     )
@@ -118,7 +118,7 @@ try:
 
 except NoBrokersAvailable:
     logger.error(
-        f"No Kafka brokers available at the specified address: [{MSG_BROKER}]"
+        f"No Kafka brokers available at the specified address: [{CONFIG.MSG_BROKER}]"
     )
 except Exception:
     logger.exception("Unexpected runtime error")

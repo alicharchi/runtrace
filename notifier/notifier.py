@@ -4,6 +4,7 @@ import logging
 from logging_config import setup_logging
 from typing import Optional, List
 from datetime import datetime
+from app_config import CONFIG
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -20,26 +21,10 @@ class RunStatus:
     FAILED = 3
 
 # -------------------------------
-# Configuration
-# -------------------------------
-DB_HOST = os.getenv("DB_HOST", "db")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_NAME = os.getenv("DB_NAME", "openFoam")
-PSWD_FILE = os.getenv("PASSWORD_FILE","/run/secrets/db-password")
-
-POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL", "60"))
-
-LOG_LEVEL_STR = os.getenv("LOG_LEVEL", "INFO").upper()
-LOG_LEVEL = logging.getLevelName(LOG_LEVEL_STR)
-if not isinstance(LOG_LEVEL, int):
-    raise ValueError(f"Invalid LOG_LEVEL: {LOG_LEVEL_STR}")
-
-# -------------------------------
 # Logging
 # -------------------------------
 if not logging.getLogger().handlers:
-    setup_logging("notifier", level=LOG_LEVEL)
+    setup_logging("notifier", level=CONFIG.LOG_LEVEL)
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +41,7 @@ class Runs(SQLModel):
 # Utilities
 # -------------------------------
 def get_db_password() -> str:
-    with open(PSWD_FILE, "r") as f:
+    with open(CONFIG.PSWD_FILE, "r") as f:
         return f.read().strip()
 
 def send_email(run_id: int):
@@ -72,7 +57,7 @@ def send_email(run_id: int):
 # -------------------------------
 db_password = get_db_password()
 connection_string = (
-    f"postgresql+psycopg2://{DB_USER}:{db_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    f"postgresql+psycopg2://{CONFIG.DB_USER}:{db_password}@{CONFIG.DB_HOST}:{CONFIG.DB_PORT}/{CONFIG.DB_NAME}"
 )
 
 engine = create_engine(connection_string, echo=False)
@@ -147,7 +132,7 @@ def main():
 
     scheduler.add_job(
         notify_completed_runs,
-        trigger=IntervalTrigger(seconds=POLL_INTERVAL_SECONDS),
+        trigger=IntervalTrigger(seconds=CONFIG.POLL_INTERVAL),
         id="run_completion_notifier",
         max_instances=1,
         replace_existing=True,
