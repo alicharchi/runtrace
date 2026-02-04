@@ -14,7 +14,7 @@ class RunStatus:
     FAILED = 3
 
 if not logging.getLogger().handlers:
-    setup_logging('notifier')
+    setup_logging('notifier',level=logging.DEBUG)
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ DB_HOST = "db"
 DB_PORT = "5432"
 DB_NAME = "openFoam"
 
-POLL_INTERVAL = 60  # seconds
+POLL_INTERVAL = 30  # seconds
 
 # -------------------------------
 # Models (matching your FastAPI app)
