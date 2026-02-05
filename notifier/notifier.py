@@ -26,9 +26,10 @@ class RunStatus:
 # Logging
 # -------------------------------
 if not logging.getLogger().handlers:
-    setup_logging("notifier", level=CONFIG.LOG_LEVEL)
+    setup_logging("notifier", level=CONFIG.LOG_LEVEL_NUM)
 
 logger = logging.getLogger(__name__)
+root = logging.getLogger()
 
 # -------------------------------
 # Models (READ-ONLY)

@@ -3,7 +3,7 @@ from typing import List
 import logging
 
 class AppConfig(BaseSettings):
-    _log_level: str = "INFO"
+    LOG_LEVEL: str = "INFO"
     DB_HOST: str = "localhost"
     DB_PORT: int = 5432
     DB_NAME: str = "openFoam"
@@ -18,8 +18,8 @@ class AppConfig(BaseSettings):
     SMTP_PORT: int = 25
 
     @property
-    def LOG_LEVEL(self) -> int:
-        level = logging.getLevelName(self._log_level.upper())
+    def LOG_LEVEL_NUM(self) -> int:
+        level = logging.getLevelName(self.LOG_LEVEL.upper())
         if not isinstance(level, int):
             raise ValueError(f"Invalid LOG_LEVEL: {self.LOG_LEVEL}")
         return level

@@ -33,7 +33,7 @@ def decode_msg(msg):
 # Configuration
 # -------------------------------
 if not logging.getLogger().handlers:    
-    setup_logging("consumer", level=CONFIG.LOG_LEVEL)
+    setup_logging("consumer", level=CONFIG.LOG_LEVEL_NUM)
 
 logger = logging.getLogger(__name__)
 engine = None

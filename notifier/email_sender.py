@@ -108,8 +108,8 @@ class EmailSender:
                                     to_addrs=[recipient_email] if isinstance(recipient_email, str) else recipient_email)
             self.logger.info(f"Email sent successfully to {recipient_email}")
         except (smtplib.SMTPException, OSError) as e:
-            self.logger.error(f"Error sending email to {recipient_email}: {e}")    
-
+            self.logger.error(f"Error sending email to {recipient_email}: {e}")   
+            raise
 
 if __name__ == "__main__":
     pass
