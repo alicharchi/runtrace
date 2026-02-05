@@ -4,3 +4,4 @@ data/
 QtGUI/build/
 
 **/__pycache__/
+Producer/__pycache__/
