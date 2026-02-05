@@ -12,6 +12,10 @@ class AppConfig(BaseSettings):
     POLL_INTERVAL: int = 60
     MSG_BROKER: str = "kafka:9093"
     ALLOWED_ORIGINS: List[str] = ["http://localhost:5173"]
+    
+    SENDER_EMAIL: str = "info@test.com"
+    SMTP_SERVER: str = "localhost"
+    SMTP_PORT: int = 25
 
     @property
     def LOG_LEVEL(self) -> int:

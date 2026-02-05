@@ -126,6 +126,18 @@ services:
           path: .
     volumes:
       - ./data:/app/data
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    environment:
+      MP_SMTP_BIND_ADDR: 0.0.0.0:1025
+      MP_UI_BIND_ADDR: 0.0.0.0:8025
+    networks:
+      - dev_network
 volumes:
   db-data:  
   kafka-data:

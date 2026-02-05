@@ -12,6 +12,8 @@ from apscheduler.triggers.interval import IntervalTrigger
 from sqlmodel import SQLModel, Field, create_engine, Session
 from sqlalchemy import text
 
+from email_sender import EmailSender
+
 # -------------------------------
 # Constants / Enums
 # -------------------------------
@@ -50,7 +52,11 @@ def send_email(run_id: int):
     MUST be idempotent or tolerate retries.
     """
     logger.info(f"Sending completion email for run {run_id}")
-    # TODO: SMTP / SendGrid / SES
+    
+    subject = "Run Completed"
+    body = f"Run {run_id} completed!"
+    recipient = "ali2@test.com"
+    sender.send(recipient, subject, body)
 
 # -------------------------------
 # Database setup
@@ -61,6 +67,14 @@ connection_string = (
 )
 
 engine = create_engine(connection_string, echo=False)
+
+sender = EmailSender(
+    sender_email=CONFIG.SENDER_EMAIL,
+    server=CONFIG.SMTP_SERVER,
+    port=CONFIG.SMTP_PORT,
+    use_tls=False,
+    logger=logger
+)
 
 # -------------------------------
 # Exactly-once logic
