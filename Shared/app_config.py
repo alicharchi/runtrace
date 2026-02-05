@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 import logging
 
 class AppConfig(BaseSettings):
@@ -15,7 +15,8 @@ class AppConfig(BaseSettings):
     
     SENDER_EMAIL: str = "info@test.com"
     SMTP_SERVER: str = "localhost"
-    SMTP_PORT: int = 25
+    SMTP_PORT: int = 25    
+    SMTP_PSWD: Optional[str] = None
 
     @property
     def LOG_LEVEL_NUM(self) -> int:

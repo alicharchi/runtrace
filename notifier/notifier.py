@@ -71,6 +71,7 @@ engine = create_engine(connection_string, echo=False)
 
 sender = EmailSender(
     sender_email=CONFIG.SENDER_EMAIL,
+    password=CONFIG.SMTP_PSWD,
     server=CONFIG.SMTP_SERVER,
     port=CONFIG.SMTP_PORT,
     use_tls=False,
