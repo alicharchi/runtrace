@@ -2,5 +2,5 @@
 data/
 .vscode/
 QtGUI/build/
-frontend/project/.vite/
-Shared/__pycache__/
+
+**/__pycache__/

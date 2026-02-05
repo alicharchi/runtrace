@@ -14,9 +14,11 @@ class AppConfig(BaseSettings):
     ALLOWED_ORIGINS: List[str] = ["http://localhost:5173"]
     
     SENDER_EMAIL: str = "info@test.com"
-    SMTP_SERVER: str = "localhost"
+    SMTP_SERVER: str = "mailpit"
     SMTP_PORT: int = 25    
     SMTP_PSWD: Optional[str] = None
+
+    LOCAL_TIMEZONE: str = "America/Los_Angeles"
 
     @property
     def LOG_LEVEL_NUM(self) -> int:

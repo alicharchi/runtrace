@@ -5,13 +5,14 @@ from logging_config import setup_logging
 from typing import Optional, List
 from datetime import datetime
 from app_config import CONFIG
-
+from run_completed_email import renderHtmlBody,normalizeExitFlag
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from sqlmodel import SQLModel, Field, create_engine, Session
 from sqlalchemy import text
-
+from datetime import timezone
+from zoneinfo import ZoneInfo
 from email_sender import EmailSender
 
 # -------------------------------
@@ -29,16 +30,6 @@ if not logging.getLogger().handlers:
     setup_logging("notifier", level=CONFIG.LOG_LEVEL_NUM)
 
 logger = logging.getLogger(__name__)
-root = logging.getLogger()
-
-# -------------------------------
-# Models (READ-ONLY)
-# -------------------------------
-class Runs(SQLModel):
-    __tablename__ = "runs"
-    id: int
-    status: int
-    email_sent: bool
 
 # -------------------------------
 # Utilities
@@ -47,17 +38,30 @@ def get_db_password() -> str:
     with open(CONFIG.PSWD_FILE, "r") as f:
         return f.read().strip()
 
-def send_email(run_id: int):
-    """
-    Replace this with real email logic.
-    MUST be idempotent or tolerate retries.
-    """
-    logger.info(f"Sending completion email for run {run_id}")
+def format_local_time(dt) -> str:
+    if dt is None:
+        return "N/A"
     
-    subject = "Run Completed"
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    
+    local_dt = dt.astimezone(ZoneInfo(CONFIG.LOCAL_TIMEZONE))    
+    local_dt = local_dt.replace(microsecond=0)
+
+    return local_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+def send_email(run):
+    run_id = run['id']
+    exit_flag = run['exitflag']
+    end_time = format_local_time(run['endtime'])
+    logger.info(f"Sending completion email for run {run_id}")
+    status = normalizeExitFlag(exit_flag)
+    subject = f"Run {run_id} completed ({status})"
     body = f"Run {run_id} completed!"
+
+    html_body = renderHtmlBody(run_id,status,end_time)
     recipient = "test@test.com"
-    sender.send(recipient, subject, body)
+    sender.send(recipient, subject, body,html_body)
 
 # -------------------------------
 # Database setup
@@ -83,27 +87,28 @@ sender = EmailSender(
 # -------------------------------
 def claim_completed_runs(session: Session) -> list[int]:
     stmt = text("""
-        UPDATE runs
-        SET email_sent = TRUE
-        WHERE id IN (
-            SELECT id
+        UPDATE runs r
+        SET emailsent = TRUE
+        FROM (
+            SELECT id, exitflag, endtime
             FROM runs
-            WHERE status = :completed
-              AND email_sent = FALSE
+            WHERE (status = :completed or status = :failed)
+            AND emailsent = FALSE
             FOR UPDATE SKIP LOCKED
-        )
-        RETURNING id
+        ) sub
+        WHERE r.id = sub.id
+        RETURNING r.id, sub.exitflag, sub.endtime
     """)
 
     result = session.execute(
         stmt,
-        {"completed": RunStatus.COMPLETED}
+        {"completed": RunStatus.COMPLETED, "failed": RunStatus.FAILED}
     )
 
-    try:
-        run_ids = [row[0] for row in result.fetchall()]
+    try:        
+        completed_runs = result.mappings().all()
         session.commit()
-        return run_ids
+        return completed_runs
     except Exception:
         session.rollback()
         raise
@@ -116,23 +121,23 @@ def notify_completed_runs():
 
     try:
         with Session(engine) as session:
-            run_ids = claim_completed_runs(session)
+            completed_runs = claim_completed_runs(session)
 
-            if not run_ids:
+            if not completed_runs:
                 logger.debug("No completed runs to notify")
                 return
 
-            logger.info(f"Claimed {len(run_ids)} runs for notification")
+            logger.info(f"Claimed {len(completed_runs)} runs for notification")
 
-            for run_id in run_ids:
+            for r in completed_runs:
                 try:
-                    send_email(run_id)
+                    send_email(r)
                 except Exception:
                     # Email failed AFTER being claimed
                     # This is intentional: exactly-once > at-least-once
                     logger.exception(
-                        f"Email send failed for run {run_id}. "
-                        f"Manual intervention may be required."
+                        "Email send failed after claiming run",
+                        extra={"run_id": r["id"], "exitflag": r["exitflag"]}
                     )
 
     except Exception:

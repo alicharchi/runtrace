@@ -26,10 +26,10 @@ class Runs(SQLModel, table=True):
     time: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: Optional[int] = Field(default=RunStatus.RUNNING)
     exitflag: Optional[int] = Field(default=None)
-    email_sent: Optional[bool] = Field(default=False)
+    emailsent: Optional[bool] = Field(default=False)
     events: List["Events"] = Relationship(back_populates="run")
     runinfo: List["RunInfo"] = Relationship(back_populates="run")
-    endTime: Optional[datetime] = Field(default=None)
+    endtime: Optional[datetime] = Field(default=None)
 
 class RunsCreate(BaseModel):
     time: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -138,7 +138,7 @@ def run_ended(
     )
     
     db_run.exitflag = payload.exitflag
-    db_run.endTime = datetime.now(timezone.utc)
+    db_run.endtime = datetime.now(timezone.utc)
 
     session.add(db_run)
     session.commit()

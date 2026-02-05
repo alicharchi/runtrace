@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Run Completed</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body style="margin:0; padding:0; background-color:#f5f7fa; font-family: Arial, Helvetica, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+    <tr>
+      <td align="center" style="padding: 24px;">
+        <table width="600" cellpadding="0" cellspacing="0" role="presentation"
+               style="background:#ffffff; border-radius:8px; overflow:hidden;
+                      box-shadow:0 2px 6px rgba(0,0,0,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:{{ header_color }}; color:#ffffff; padding:20px 24px;">
+              <h2 style="margin:0; font-size:20px;">Run Completed</h2>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:24px; color:#111827; font-size:14px; line-height:1.6;">
+              <p style="margin-top:0;">
+                The following run was completed at {end_time}:
+              </p>
+
+              <table cellpadding="0" cellspacing="0" role="presentation" style="margin:16px 0;">
+                <tr>
+                  <td style="padding:4px 0; font-weight:bold;">Run ID:</td>
+                  <td style="padding:4px 12px;">{run_id}</td>
+                </tr>
+                <tr>
+                  <td style="padding:4px 0; font-weight:bold;">Exit Status:</td>
+                  <td style="padding:4px 12px; font-weight:bold; color:{status_color};">
+                    {exit_flag}
+                  </td>
+                </tr>
+              </table>
+
+              <p>
+                You can view detailed information and results for this run using the link below:
+              </p>
+
+              <p style="text-align:center; margin:24px 0;">
+                <a href="{run_url}"
+                   style="background:#2563eb; color:#ffffff; text-decoration:none;
+                          padding:12px 20px; border-radius:6px; display:inline-block;
+                          font-weight:bold;">
+                  View Run Details
+                </a>
+              </p>
+
+              <p style="color:#6b7280; font-size:13px;">
+                If the button does not work, copy and paste the following URL into your browser:
+              </p>
+              <p style="word-break:break-all; color:#2563eb; font-size:13px;">
+                {run_url}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f3f4f6; padding:16px 24px; color:#6b7280; font-size:12px;">
+              This is an automated notification. Please do not reply to this email.
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

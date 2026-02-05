@@ -17,6 +17,7 @@ COPY notifier/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY notifier/*.py /app
+COPY notifier/*.html /app
 COPY /Shared/app_config.py /app
 COPY /Shared/logging_config.py /app
 RUN mkdir -p /app/data
