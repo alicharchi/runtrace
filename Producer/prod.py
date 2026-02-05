@@ -118,8 +118,9 @@ try:
                     if m is not None:
                         message = {"run_id":run_id, "sim_time":sim_time}
                         for key,value in m.items():                        
-                            iters[key] = iters.get(key, 0) + 1
-                            kv = {"parameter":key, "value":value, "iter":iters[key]}                        
+                            iters[key] = iters.get(key, -1) + 1
+                            it_str = '' if iters[key]==0 else f'_{iters[key]}'
+                            kv = {"parameter":f'{key}{it_str}', "value":value}                        
                             tx.Transmit(message | kv , "events")
                     break
 

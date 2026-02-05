@@ -28,7 +28,6 @@ Kafka_Broker = "localhost:9092"
 parser = argparse.ArgumentParser()
 parser.add_argument("endTime", help=f"End time" , type=float)
 parser.add_argument("stepSize", help=f"Step size" , type=float)
-parser.add_argument("--iters", help=f"Number of iterations in each time step" , type=int, default=2)
 parser.add_argument("--broker", help=f"Kafka broker address and port (default: {Kafka_Broker})" , default=Kafka_Broker)
 parser.add_argument("--runs_registry", help=f"Api for registering run (default: {Base_URL})", default=Base_URL)
 args = parser.parse_args()
@@ -52,11 +51,10 @@ with KafkaTransmitter(Kafka_Broker) as tx:
         for p in parameters:    
             a = baselines[p]
             rng = np.random.default_rng()
-            message = {"run_id":run_id, "sim_time":sim_time, "parameter":p}
-            for iter in range(1,args.iters+1):
-                value = a * np.sin(2 * np.pi * freq * sim_time) + rng.uniform(-b, b)                
-                kv = {"value":value, "iter":iter}
-                tx.Transmit(message | kv , "events")
+            message = {"run_id":run_id, "sim_time":sim_time, "parameter":p}            
+            value = a * np.sin(2 * np.pi * freq * sim_time) + rng.uniform(-b, b)                
+            kv = {"value":value}
+            tx.Transmit(message | kv , "events")
             
         if (i % 10 == 0): print(f'Sent t={sim_time:0.2f}')
 

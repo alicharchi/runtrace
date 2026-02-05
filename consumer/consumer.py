@@ -4,8 +4,6 @@ from logging_config import setup_logging
 from kafka import KafkaConsumer
 from kafka.errors import NoBrokersAvailable
 
-
-
 import msgpack
 
 from sqlalchemy import (
@@ -59,8 +57,7 @@ try:
         Column("run_id", Integer),
         Column("sim_time", Double),
         Column("parameter", String),
-        Column("value", Double),
-        Column("iter", Integer),
+        Column("value", Double),        
     )
 
     logger.info("Creating metadata")
