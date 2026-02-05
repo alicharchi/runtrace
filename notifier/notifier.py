@@ -56,7 +56,7 @@ def send_email(run_id: int):
     
     subject = "Run Completed"
     body = f"Run {run_id} completed!"
-    recipient = "ali2@test.com"
+    recipient = "test@test.com"
     sender.send(recipient, subject, body)
 
 # -------------------------------
