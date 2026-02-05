@@ -7,4 +7,3 @@ export const COLORS = [
   "#8c564b",
 ];
 
-export const iterColor = (iter) => COLORS[iter % COLORS.length];

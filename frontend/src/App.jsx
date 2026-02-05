@@ -1,20 +1,17 @@
 import { useEffect, useState } from "react";
 import { Container, Row, Col } from "react-bootstrap";
-import { TopControls } from "./components/Controls";
-import { BottomControls } from "./components/Controls";
-import IterToggles from "./components/IterToggles";
+import { TopControls, BottomControls } from "./components/Controls";
 import Plot from "./components/Plot";
 import { fetchRuns, fetchParameters, fetchSeries } from "./api";
 
 export default function App() {
   const [runs, setRuns] = useState([]);
   const [parameters, setParameters] = useState([]);
-  const [series, setSeries] = useState([]);
+  const [series, setSeries] = useState({ points: [] }); // single EventsSeries
 
   const [runId, setRunId] = useState("");
   const [parameter, setParameter] = useState("");
-  const [refreshSec, setRefreshSec] = useState(2);
-  const [visibleIters, setVisibleIters] = useState({});
+  const [refreshSec, setRefreshSec] = useState(2);  
   const [lastRefresh, setLastRefresh] = useState(null);
 
   // Initial metadata fetch
@@ -25,21 +22,15 @@ export default function App() {
 
   // Polling
   useEffect(() => {
-    if (!runId || !parameter) return;
+    if (!runId || !parameter) {
+      setSeries({ points: [] });
+      return;
+    }
 
     const fetchData = () => {
       fetchSeries({ runId, parameter })
-        .then((d) => {
-          setSeries(d || []);
-
-          // auto-enable new iters
-          const vis = {};
-          (d || []).forEach((s) => {
-            vis[s.iter] = visibleIters[s.iter] ?? true;
-          });
-          setVisibleIters((v) => ({ ...vis, ...v }));
-
-          // ✅ Update last refresh timestamp
+        .then((data) => {
+          setSeries(data || { points: [] });
           setLastRefresh(new Date());
         })
         .catch((err) => console.error(err));
@@ -69,19 +60,10 @@ export default function App() {
 
       <Row className="mb-3">
         <Col>
-          <IterToggles
-            series={series}
-            visibleIters={visibleIters}
-            setVisibleIters={setVisibleIters}
-          />
-        </Col>
-      </Row>
-
-      <Row className="mb-3">
-        <Col>
-          <Plot series={series} visibleIters={visibleIters} yVarName={parameter} />
+          <Plot series={series} yVarName={parameter} />
         </Col>
       </Row>      
+
       <Row>
         <Col>
           <BottomControls
