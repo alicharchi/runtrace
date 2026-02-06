@@ -15,11 +15,13 @@ export default function Dashboard({ runs }) {
   const [refreshSec, setRefreshSec] = useState(5);
   const [lastRefresh, setLastRefresh] = useState(null);
 
+  // Clear parameter and plot data when run changes
   useEffect(() => {
     setParameter(null);
     setPlotData([]);
   }, [runId]);
 
+  // Auto-refresh plot data
   useEffect(() => {
     if (!runId || !parameter) {
       setPlotLoading(false);
@@ -29,7 +31,7 @@ export default function Dashboard({ runs }) {
 
     let cancelled = false;
 
-    async function loadPlot() {
+    const fetchAndSet = async () => {
       setPlotLoading(true);
       try {
         const points = await fetchPlotData(runId, parameter);
@@ -43,12 +45,18 @@ export default function Dashboard({ runs }) {
       } finally {
         if (!cancelled) setPlotLoading(false);
       }
-    }
+    };
 
-    loadPlot();
+    // Fetch immediately
+    fetchAndSet();
 
+    // Set up interval for periodic refresh
+    const intervalId = setInterval(fetchAndSet, refreshSec * 1000);
+
+    // Cleanup
     return () => {
       cancelled = true;
+      clearInterval(intervalId);
     };
   }, [runId, parameter, refreshSec]);
 
