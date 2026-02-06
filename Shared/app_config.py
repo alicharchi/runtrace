@@ -20,6 +20,8 @@ class AppConfig(BaseSettings):
 
     LOCAL_TIMEZONE: str = "America/Los_Angeles"
 
+    SQL_ECHO: bool = True 
+
     @property
     def LOG_LEVEL_NUM(self) -> int:
         level = logging.getLevelName(self.LOG_LEVEL.upper())
