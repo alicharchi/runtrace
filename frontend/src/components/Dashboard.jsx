@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import TopControls from "./TopControls";
 import PlotArea from "./PlotArea";
 import BottomControls from "./BottomControls";
-import { API_BASE } from "../config";
+import { fetchPlotData } from "../api";
 
 export default function Dashboard({ runs }) {
   const [runId, setRunId] = useState(null);
@@ -20,7 +20,6 @@ export default function Dashboard({ runs }) {
     setPlotData([]);
   }, [runId]);
 
-
   useEffect(() => {
     if (!runId || !parameter) {
       setPlotLoading(false);
@@ -30,26 +29,23 @@ export default function Dashboard({ runs }) {
 
     let cancelled = false;
 
-    async function fetchPlot() {
+    async function loadPlot() {
       setPlotLoading(true);
       try {
-        const url = `${API_BASE}/events/filter?runid=${runId}&parameter=${parameter}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Failed to fetch plot data: ${res.status}`);
-        const data = await res.json();
+        const points = await fetchPlotData(runId, parameter);
         if (!cancelled) {
-          setPlotData(data.points);
+          setPlotData(points);
           setLastRefresh(new Date());
         }
       } catch (err) {
         if (!cancelled) console.error(err);
-        setPlotData([]);
+        if (!cancelled) setPlotData([]);
       } finally {
         if (!cancelled) setPlotLoading(false);
       }
     }
 
-    fetchPlot();
+    loadPlot();
 
     return () => {
       cancelled = true;
@@ -71,7 +67,11 @@ export default function Dashboard({ runs }) {
 
       <PlotArea plotData={plotData} parameter={parameter} loading={isLoading} />
 
-      <BottomControls refreshSec={refreshSec} setRefreshSec={setRefreshSec} lastRefresh={lastRefresh} />
+      <BottomControls
+        refreshSec={refreshSec}
+        setRefreshSec={setRefreshSec}
+        lastRefresh={lastRefresh}
+      />
     </div>
   );
 }

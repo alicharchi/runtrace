@@ -1,61 +1,37 @@
 import { useEffect, useState } from "react";
 import { Spinner } from "react-bootstrap";
-import { API_BASE } from "../config";
+import { fetchParameters } from "../api";
 
-export default function RunParameterSelector({
-  runs,
-  selectedRunId,
-  selectedParameter,
-  onRunChange,
-  onParameterChange,
-  showAllRunsOption = true,
-}) {  
+export default function RunParameterSelector({ runs, selectedRunId, selectedParameter, onRunChange, onParameterChange, showAllRunsOption = true }) {  
   const [parameters, setParameters] = useState([]);  
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;    
+    let cancelled = false;
     onParameterChange(null);    
     setParameters([]);
-    setLoading(false);    
+    setLoading(false);
 
-    if (selectedRunId == null || selectedRunId === "") {
-      return;
-    }    
-    async function fetchParameters() {      
+    if (!selectedRunId) return;
+
+    async function loadParameters() {
       setLoading(true);
-
       try {
-        const url = `${API_BASE}/parameters?runid=${selectedRunId}`;
-        const res = await fetch(url);
-
-        if (!res.ok) {
-          const text = await res.text();
-          console.error("Failed to fetch parameters. Response:", text);
-          throw new Error("Failed to fetch parameters");
-        }
-
-        const data = await res.json();
-        
-        if (!cancelled) {
-          setParameters(data);
-        }
+        const data = await fetchParameters(selectedRunId);
+        if (!cancelled) setParameters(data);
       } catch (err) {
         if (!cancelled) {
-          console.error("Error fetching parameters:", err);
+          console.error(err);
           setParameters([]);
         }
-      } finally {        
-        if (!cancelled) {
-          setLoading(false);
-        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
 
-    fetchParameters();
-    return () => {
-      cancelled = true;
-    };
+    loadParameters();
+
+    return () => { cancelled = true; };
   }, [selectedRunId, onParameterChange]);
 
   return (
