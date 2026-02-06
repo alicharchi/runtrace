@@ -3,6 +3,7 @@ from typing import Optional, List, Union
 from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session, select
 
+from app.utils.auth import get_current_user
 from app.database import get_session
 from app.models.event import Events
 from app.schemas.event import (
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/events", tags=["events"])
 def create_events(
     events: Union[EventsCreate, List[EventsCreate]],
     session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
 ):
     # Normalize to list
     if isinstance(events, EventsCreate):
@@ -43,7 +45,8 @@ def create_events(
 
 
 @router.get("/", response_model=List[Events])
-def get_events(session: Session = Depends(get_session)):
+def get_events(session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)):
     stmt = select(Events).order_by(Events.sim_time)
     return session.exec(stmt).all()
 
@@ -55,6 +58,7 @@ def get_events_by_parameter(
     time_min: float = Query(0),
     time_max: float = Query(-1),
     session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
 ) -> EventsSeries:
     if parameter is None or runid is None:
         return EventsSeries(points=[])

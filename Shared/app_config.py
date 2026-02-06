@@ -22,6 +22,9 @@ class AppConfig(BaseSettings):
 
     SQL_ECHO: bool = True 
 
+    ADMIN_EMAIL: str ="admin@test.com"
+    ADMIN_PASSWORD: str ="ChangeMe123!Secure"
+
     @property
     def LOG_LEVEL_NUM(self) -> int:
         level = logging.getLevelName(self.LOG_LEVEL.upper())

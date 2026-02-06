@@ -2,6 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
+from app.utils.auth import get_current_user
 from app.database import get_session
 from app.models.runinfo import RunInfo
 from app.models.run import Runs
@@ -14,6 +15,7 @@ def create_runinfo(
     run_id: int,
     info_list: List[RunInfoCreate],
     session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
 ):
     run = session.get(Runs, run_id)
     if not run:
