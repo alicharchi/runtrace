@@ -8,9 +8,7 @@ export default function TopControls({
   setRunId,
   parameter,
   setParameter,
-  parametersLoading,
-  setParametersLoading,
-  onRefreshClick,
+  setParametersLoading  
 }) {
   return (
     <Row className="align-items-center mb-3">
@@ -24,9 +22,6 @@ export default function TopControls({
           showAllRunsOption={true}
           setLoading={setParametersLoading}
         />
-      </Col>
-      <Col xs="12" md="4" className="d-flex justify-content-md-end">
-        <RefreshButton onClick={onRefreshClick} />
       </Col>
     </Row>
   );

@@ -14,14 +14,13 @@ export default function Dashboard({ runs }) {
 
   const [refreshSec, setRefreshSec] = useState(5);
   const [lastRefresh, setLastRefresh] = useState(null);
-
-  // Reset parameter and plot when run changes
+  
   useEffect(() => {
     setParameter(null);
     setPlotData([]);
   }, [runId]);
 
-  // Fetch plot data when run + parameter + refresh changes
+
   useEffect(() => {
     if (!runId || !parameter) {
       setPlotData([]);
@@ -58,10 +57,6 @@ export default function Dashboard({ runs }) {
   
   const isLoading = parametersLoading || plotLoading;
 
-  const handleRefreshClick = () => {
-    setRefreshSec((prev) => prev);
-  };
-
   return (
     <div>
       <TopControls
@@ -69,10 +64,8 @@ export default function Dashboard({ runs }) {
         runId={runId}
         setRunId={setRunId}
         parameter={parameter}
-        setParameter={setParameter}
-        parametersLoading={parametersLoading}
-        setParametersLoading={setParametersLoading}
-        onRefreshClick={handleRefreshClick}
+        setParameter={setParameter}        
+        setParametersLoading={setParametersLoading}        
       />
 
       <PlotArea plotData={plotData} parameter={parameter} loading={isLoading} />
