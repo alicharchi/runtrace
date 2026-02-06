@@ -14,7 +14,7 @@ export default function Dashboard({ runs }) {
 
   const [refreshSec, setRefreshSec] = useState(5);
   const [lastRefresh, setLastRefresh] = useState(null);
-  
+
   useEffect(() => {
     setParameter(null);
     setPlotData([]);
@@ -23,6 +23,7 @@ export default function Dashboard({ runs }) {
 
   useEffect(() => {
     if (!runId || !parameter) {
+      setPlotLoading(false);
       setPlotData([]);
       return;
     }
@@ -54,8 +55,8 @@ export default function Dashboard({ runs }) {
       cancelled = true;
     };
   }, [runId, parameter, refreshSec]);
-  
-  const isLoading = parametersLoading || plotLoading;
+
+  const isLoading = plotLoading && !!parameter;
 
   return (
     <div>
@@ -64,8 +65,8 @@ export default function Dashboard({ runs }) {
         runId={runId}
         setRunId={setRunId}
         parameter={parameter}
-        setParameter={setParameter}        
-        setParametersLoading={setParametersLoading}        
+        setParameter={setParameter}
+        setParametersLoading={setParametersLoading}
       />
 
       <PlotArea plotData={plotData} parameter={parameter} loading={isLoading} />

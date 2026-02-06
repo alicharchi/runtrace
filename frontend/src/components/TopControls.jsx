@@ -1,5 +1,4 @@
 import { Row, Col, Form } from "react-bootstrap";
-import RefreshButton from "./RefreshButton";
 import RunParameterSelector from "./RunParameterSelector";
 
 export default function TopControls({

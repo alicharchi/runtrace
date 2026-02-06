@@ -9,25 +9,26 @@ export default function RunParameterSelector({
   onRunChange,
   onParameterChange,
   showAllRunsOption = true,
-}) {
-  const [parameters, setParameters] = useState([]);
+}) {  
+  const [parameters, setParameters] = useState([]);  
   const [loading, setLoading] = useState(false);
 
-  // Fetch parameters whenever selectedRunId changes
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false;    
+    onParameterChange(null);    
+    setParameters([]);
+    setLoading(false);    
 
-    async function fetchParameters() {
+    if (selectedRunId == null || selectedRunId === "") {
+      return;
+    }    
+    async function fetchParameters() {      
       setLoading(true);
-      onParameterChange(null); // reset parameter selection
 
       try {
-        const url =
-          selectedRunId != null && selectedRunId !== ""
-            ? `${API_BASE}/parameters?runid=${selectedRunId}`
-            : `${API_BASE}/parameters`;
-
+        const url = `${API_BASE}/parameters?runid=${selectedRunId}`;
         const res = await fetch(url);
+
         if (!res.ok) {
           const text = await res.text();
           console.error("Failed to fetch parameters. Response:", text);
@@ -35,27 +36,31 @@ export default function RunParameterSelector({
         }
 
         const data = await res.json();
-        if (!cancelled) setParameters(data);
+        
+        if (!cancelled) {
+          setParameters(data);
+        }
       } catch (err) {
         if (!cancelled) {
           console.error("Error fetching parameters:", err);
           setParameters([]);
         }
-      } finally {
-        if (!cancelled) setLoading(false);
+      } finally {        
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     fetchParameters();
-
     return () => {
       cancelled = true;
     };
   }, [selectedRunId, onParameterChange]);
 
   return (
-    <div className="run-parameter-selector d-flex gap-2 align-items-center">
-      {/* Run dropdown with spinner */}
+    <div className="run-parameter-selector d-flex gap-2 align-items-center">      
+      
       <div className="d-flex align-items-center">
         <select
           value={selectedRunId ?? ""}
@@ -70,6 +75,7 @@ export default function RunParameterSelector({
             </option>
           ))}
         </select>
+        
         {loading && (
           <Spinner
             animation="border"
@@ -81,22 +87,20 @@ export default function RunParameterSelector({
           </Spinner>
         )}
       </div>
-
-      {/* Parameter dropdown */}
+      
       <select
         value={selectedParameter ?? ""}
         disabled={loading || parameters.length === 0}
-        onChange={(e) =>
-          onParameterChange(e.target.value || null)
-        }
+        onChange={(e) => onParameterChange(e.target.value || null)}
       >
         <option value="">
           {loading
             ? "Loading parameters..."
             : parameters.length === 0
-              ? "No parameters"
-              : "Select parameter"}
+            ? "No parameters"
+            : "Select parameter"}
         </option>
+
         {parameters.map((param) => (
           <option key={param} value={param}>
             {param}
