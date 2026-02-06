@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.app_config import CONFIG
 from app.database import init_db
-from app.routers import runs, events, runinfo, health
+from app.routers import runs, events, runinfo, parameters, health
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Run Logging API")
@@ -20,6 +20,7 @@ def create_app() -> FastAPI:
     app.include_router(runs.router)
     app.include_router(events.router)
     app.include_router(runinfo.router)
+    app.include_router(parameters.router)
 
     return app
 
