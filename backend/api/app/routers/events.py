@@ -19,11 +19,6 @@ def create_events(
     events: Union[EventsCreate, List[EventsCreate]],
     session: Session = Depends(get_session),
 ):
-    """
-    Create one or multiple events.
-    Accepts either a single EventsCreate or a list.
-    """
-
     # Normalize to list
     if isinstance(events, EventsCreate):
         events_list = [events]
@@ -49,9 +44,6 @@ def create_events(
 
 @router.get("/", response_model=List[Events])
 def get_events(session: Session = Depends(get_session)):
-    """
-    Return all events ordered by simulation time.
-    """
     stmt = select(Events).order_by(Events.sim_time)
     return session.exec(stmt).all()
 
@@ -64,10 +56,6 @@ def get_events_by_parameter(
     time_max: float = Query(-1),
     session: Session = Depends(get_session),
 ) -> EventsSeries:
-    """
-    Return downsampled time-series data for plotting.
-    """
-
     if parameter is None or runid is None:
         return EventsSeries(points=[])
 
@@ -94,16 +82,3 @@ def get_events_by_parameter(
     ]
 
     return EventsSeries(points=points)
-
-
-@router.get("/parameters", response_model=List[str])
-def get_parameters(session: Session = Depends(get_session)):
-    """
-    Return sorted list of unique event parameters.
-    """
-    stmt = (
-        select(Events.parameter)
-        .distinct()
-        .order_by(Events.parameter)
-    )
-    return session.exec(stmt).all()
