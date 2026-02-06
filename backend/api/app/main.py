@@ -32,11 +32,18 @@ def create_app() -> FastAPI:
 
 app = create_app()
 
+
 @app.on_event("startup")
-def on_startup():    
-    init_db()    
-    admin_email = CONFIG.ADMIN_EMAIL  
+def on_startup():
+    init_db()
+
+    admin_email = CONFIG.ADMIN_EMAIL
     admin_password = CONFIG.ADMIN_PASSWORD
+    
+    if len(admin_password.encode("utf-8")) > 72:
+        raise RuntimeError(
+            "ADMIN_PASSWORD must be 72 bytes or fewer (bcrypt limit)"
+        )
 
     with Session(engine) as session:
         existing_admin = session.exec(
@@ -50,10 +57,10 @@ def on_startup():
                 last_name="User",
                 password=hash_password(admin_password),
                 is_superuser=True,
-                is_active=True,                
+                is_active=True,
             )
             session.add(admin)
             session.commit()
-            print(f"Admin user created: {admin_email}")
+            print(f"✅ Admin user created: {admin_email}")
         else:
-            print("Admin user already exists")
+            print("ℹ️ Admin user already exists")

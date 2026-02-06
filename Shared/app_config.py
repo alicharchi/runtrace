@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import EmailStr
 from typing import List, Optional
 import logging
 
@@ -22,8 +23,8 @@ class AppConfig(BaseSettings):
 
     SQL_ECHO: bool = True 
 
-    ADMIN_EMAIL: str ="admin@test.com"
-    ADMIN_PASSWORD: str ="ChangeMe123!Secure"
+    ADMIN_EMAIL: EmailStr ="admin@test.com"
+    ADMIN_PASSWORD: str ="test123"
 
     @property
     def LOG_LEVEL_NUM(self) -> int:
