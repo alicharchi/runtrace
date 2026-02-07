@@ -6,7 +6,7 @@ from app.app_config import CONFIG
 from app.database import init_db, engine
 from app.models.user import User
 from app.utils.auth import hash_password
-from app.routers import runs, events, runinfo, parameters, login, health
+from app.routers import runs, events, runinfo, parameters, login, health, users
 
 
 def create_app() -> FastAPI:
@@ -26,6 +26,7 @@ def create_app() -> FastAPI:
     app.include_router(runinfo.router)
     app.include_router(parameters.router)
     app.include_router(login.router)
+    app.include_router(users.router)
 
     return app
 

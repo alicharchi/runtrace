@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from typing import List
 
-from models.user import User
-from schemas.user import UserCreate, UserRead, UserUpdate
-from database import get_session
-from utils.auth import (
+from app.models.user import User
+from app.schemas.user import UserCreate, UserRead, UserUpdate
+from app.database import get_session
+from app.utils.auth import (
     get_current_user,
     get_current_active_superuser,
     hash_password
