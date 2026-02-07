@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from app.utils.auth import get_current_user
 from app.database import get_session
 from app.models.run import Runs
-from app.schemas.run import RunsCreate, RunsEnd
+from app.schemas.run import RunsCreate, RunsEnd, RunsRead
 from app.models.enums import RunStatus
 
 router = APIRouter(prefix="/runs", tags=["runs"])
@@ -18,18 +18,19 @@ def create_run(
     current_user = Depends(get_current_user)
 ):
     db_run = Runs(
-        time=run.time,
+        time=run.time or datetime.now(timezone.utc),
         status=RunStatus.RUNNING,
+        user_id=current_user.id
     )
     session.add(db_run)
     session.commit()
     session.refresh(db_run)
     return db_run
 
-@router.get("/", response_model=List[Runs])
+@router.get("/", response_model=List[RunsRead])
 def get_runs(session: Session = Depends(get_session),
     current_user = Depends(get_current_user)):
-    stmt = select(Runs)
+    stmt = select(Runs).where(Runs.user_id == current_user.id)
     return session.exec(stmt).all()
 
 @router.put("/{run_id}/ended", response_model=Runs)
@@ -42,6 +43,9 @@ def run_ended(
     db_run = session.get(Runs, run_id)
     if not db_run:
         raise HTTPException(status_code=404, detail="Run not found")
+
+    if db_run.user_id != current_user.id and not current_user.is_superuser:
+        raise HTTPException(status_code=403)
 
     db_run.status = (
         RunStatus.FAILED if payload.exitflag != 0 else RunStatus.COMPLETED

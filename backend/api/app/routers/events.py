@@ -1,11 +1,12 @@
 from typing import Optional, List, Union
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlmodel import Session, select
 
 from app.utils.auth import get_current_user
 from app.database import get_session
 from app.models.event import Events
+from app.models.run import Runs 
 from app.schemas.event import (
     EventsCreate,
     EventsReduced,
@@ -13,7 +14,6 @@ from app.schemas.event import (
 )
 
 router = APIRouter(prefix="/events", tags=["events"])
-
 
 @router.post("/", response_model=Union[Events, List[Events]])
 def create_events(
@@ -31,13 +31,16 @@ def create_events(
 
     db_events: List[Events] = []
 
-    for event in events_list:
+    for event in events_list:        
+        run = session.get(Runs, event.run_id)
+        if not run or run.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail=f"You do not have access to run {event.run_id}")
+
         db_event = Events(**event.dict())
         session.add(db_event)
         db_events.append(db_event)
 
     session.commit()
-
     for db_event in db_events:
         session.refresh(db_event)
 
@@ -45,11 +48,17 @@ def create_events(
 
 
 @router.get("/", response_model=List[Events])
-def get_events(session: Session = Depends(get_session),
-    current_user = Depends(get_current_user)):
-    stmt = select(Events).order_by(Events.sim_time)
+def get_events(
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):    
+    stmt = (
+        select(Events)
+        .join(Runs)
+        .where(Runs.user_id == current_user.id)
+        .order_by(Events.sim_time)
+    )
     return session.exec(stmt).all()
-
 
 @router.get("/filter", response_model=EventsSeries)
 def get_events_by_parameter(
@@ -60,15 +69,22 @@ def get_events_by_parameter(
     session: Session = Depends(get_session),
     current_user = Depends(get_current_user)
 ) -> EventsSeries:
+
     if parameter is None or runid is None:
         return EventsSeries(points=[])
 
     MAX_POINTS = 5000
 
-    stmt = select(Events.sim_time, Events.value).where(
-        Events.parameter == parameter,
-        Events.run_id == runid,
-        Events.sim_time >= time_min,
+    # Single query: join Events with Runs to enforce ownership
+    stmt = (
+        select(Events.sim_time, Events.value)
+        .join(Runs, Events.run_id == Runs.id)
+        .where(
+            Runs.user_id == current_user.id,  # ✅ ownership check
+            Events.run_id == runid,
+            Events.parameter == parameter,
+            Events.sim_time >= time_min,
+        )
     )
 
     if time_max != -1:
