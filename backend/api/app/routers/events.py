@@ -20,8 +20,7 @@ def create_events(
     events: Union[EventsCreate, List[EventsCreate]],
     session: Session = Depends(get_session),
     current_user = Depends(get_current_user)
-):
-    # Normalize to list
+):    
     if isinstance(events, EventsCreate):
         events_list = [events]
         single = True
@@ -74,13 +73,12 @@ def get_events_by_parameter(
         return EventsSeries(points=[])
 
     MAX_POINTS = 5000
-
-    # Single query: join Events with Runs to enforce ownership
+    
     stmt = (
         select(Events.sim_time, Events.value)
         .join(Runs, Events.run_id == Runs.id)
         .where(
-            Runs.user_id == current_user.id,  # ✅ ownership check
+            Runs.user_id == current_user.id,
             Events.run_id == runid,
             Events.parameter == parameter,
             Events.sim_time >= time_min,

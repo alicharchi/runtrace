@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Optional
+from app.app_config import CONFIG
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -10,9 +11,9 @@ from app.models.user import User
 from app.database import get_session
 from passlib.context import CryptContext
 
-SECRET_KEY = "your-super-secret-key"  # TODO: move to environment variable
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+SECRET_KEY = CONFIG.JWT_SECRET_KEY
+ALGORITHM = CONFIG.JWT_ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = CONFIG.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 

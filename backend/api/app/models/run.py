@@ -18,10 +18,8 @@ class Runs(SQLModel, table=True):
     emailsent: bool = Field(default=False, nullable=False)
     endtime: Optional[datetime] = Field(default=None)
 
-    # Foreign key
     user_id: int = Field(foreign_key="users.id", nullable=False)
-
-    # Relationships
+    
     user: Optional["User"] = Relationship(back_populates="runs")
     events: List["Events"] = Relationship(back_populates="run")
     runinfo: List["RunInfo"] = Relationship(back_populates="run")

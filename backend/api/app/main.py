@@ -62,6 +62,6 @@ def on_startup():
             )
             session.add(admin)
             session.commit()
-            print(f"✅ Admin user created: {admin_email}")
+            print(f"Admin user created: {admin_email}")
         else:
-            print("ℹ️ Admin user already exists")
+            print("Admin user already exists")

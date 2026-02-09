@@ -13,6 +13,5 @@ class User(SQLModel, table=True):
     password: str = Field(nullable=False)
     is_active: bool = Field(default=True)
     is_superuser: bool = Field(default=False)
-
-    # Relationships
+    
     runs: List[Runs] = Relationship(back_populates="user")

@@ -1,7 +1,13 @@
 from pydantic_settings import BaseSettings
-from pydantic import EmailStr
+from pydantic import EmailStr,Field
 from typing import List, Optional
 import logging
+from enum import Enum
+
+class JWTAlgorithm(str, Enum):
+    HS256 = "HS256"
+    HS384 = "HS384"
+    HS512 = "HS512"
 
 class AppConfig(BaseSettings):
     LOG_LEVEL: str = "INFO"
@@ -25,6 +31,10 @@ class AppConfig(BaseSettings):
 
     ADMIN_EMAIL: EmailStr ="admin@test.com"
     ADMIN_PASSWORD: str ="test123"
+
+    JWT_SECRET_KEY: str = Field(..., min_length=32)
+    JWT_ALGORITHM: JWTAlgorithm = JWTAlgorithm.HS256
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(60, gt=0)
 
     @property
     def LOG_LEVEL_NUM(self) -> int:

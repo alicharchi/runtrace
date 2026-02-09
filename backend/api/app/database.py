@@ -15,7 +15,6 @@ DATABASE_URL = (
 
 engine = create_engine(DATABASE_URL, echo=CONFIG.SQL_ECHO)
 
-
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
 
