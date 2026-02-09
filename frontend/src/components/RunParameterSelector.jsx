@@ -2,22 +2,31 @@ import { useEffect, useState } from "react";
 import { Spinner } from "react-bootstrap";
 import { fetchParameters } from "../api";
 
-export default function RunParameterSelector({ runs, selectedRunId, selectedParameter, onRunChange, onParameterChange, showAllRunsOption = true }) {  
-  const [parameters, setParameters] = useState([]);  
+export default function RunParameterSelector({
+  runs,
+  selectedRunId,
+  selectedParameter,
+  onRunChange,
+  onParameterChange,
+  showAllRunsOption = true,
+  token, 
+}) {
+  const [parameters, setParameters] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    onParameterChange(null);    
+
+    onParameterChange(null);
     setParameters([]);
     setLoading(false);
 
-    if (!selectedRunId) return;
+    if (!selectedRunId || !token) return; 
 
     async function loadParameters() {
       setLoading(true);
       try {
-        const data = await fetchParameters(selectedRunId);
+        const data = await fetchParameters(selectedRunId, token);
         if (!cancelled) setParameters(data);
       } catch (err) {
         if (!cancelled) {
@@ -31,12 +40,13 @@ export default function RunParameterSelector({ runs, selectedRunId, selectedPara
 
     loadParameters();
 
-    return () => { cancelled = true; };
-  }, [selectedRunId, onParameterChange]);
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedRunId, token, onParameterChange]);
 
   return (
-    <div className="run-parameter-selector d-flex gap-2 align-items-center">      
-      
+    <div className="run-parameter-selector d-flex gap-2 align-items-center">
       <div className="d-flex align-items-center">
         <select
           value={selectedRunId ?? ""}
@@ -51,7 +61,7 @@ export default function RunParameterSelector({ runs, selectedRunId, selectedPara
             </option>
           ))}
         </select>
-        
+
         {loading && (
           <Spinner
             animation="border"
@@ -63,7 +73,7 @@ export default function RunParameterSelector({ runs, selectedRunId, selectedPara
           </Spinner>
         )}
       </div>
-      
+
       <select
         value={selectedParameter ?? ""}
         disabled={loading || parameters.length === 0}

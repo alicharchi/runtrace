@@ -1,4 +1,4 @@
-import { Row, Col, Form } from "react-bootstrap";
+import { Row, Col } from "react-bootstrap";
 import RunParameterSelector from "./RunParameterSelector";
 
 export default function TopControls({
@@ -7,7 +7,8 @@ export default function TopControls({
   setRunId,
   parameter,
   setParameter,
-  setParametersLoading  
+  setParametersLoading,
+  token,
 }) {
   return (
     <Row className="align-items-center mb-3">
@@ -20,6 +21,7 @@ export default function TopControls({
           onParameterChange={setParameter}
           showAllRunsOption={true}
           setLoading={setParametersLoading}
+          token={token}
         />
       </Col>
     </Row>
