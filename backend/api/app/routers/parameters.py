@@ -14,16 +14,18 @@ def get_parameters(
     runid: Optional[int] = Query(None, description="Filter parameters by run id"),
     session: Session = Depends(get_session),
     current_user = Depends(get_current_user)
-):
+):    
     stmt = (
         select(Events.parameter)
+        .distinct()
         .join(Runs, Events.run_id == Runs.id)
-        .where(Runs.user_id == current_user.id)
+        .order_by(Events.parameter)
     )
+
+    if not current_user.is_superuser:
+        stmt = stmt.where(Runs.user_id == current_user.id)
 
     if runid is not None:
         stmt = stmt.where(Runs.id == runid)
-
-    stmt = stmt.distinct().order_by(Events.parameter)
 
     return session.exec(stmt).all()

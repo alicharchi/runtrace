@@ -12,6 +12,7 @@ class RunsEnd(BaseModel):
 
 class RunsRead(BaseModel):
     id: int
+    user_id: int
     time: datetime
     status: int
     exitflag: Optional[int]

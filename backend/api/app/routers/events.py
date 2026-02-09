@@ -50,13 +50,16 @@ def create_events(
 def get_events(
     session: Session = Depends(get_session),
     current_user = Depends(get_current_user)
-):    
+):
     stmt = (
         select(Events)
         .join(Runs)
-        .where(Runs.user_id == current_user.id)
         .order_by(Events.sim_time)
     )
+
+    if not current_user.is_superuser:
+        stmt = stmt.where(Runs.user_id == current_user.id)
+
     return session.exec(stmt).all()
 
 @router.get("/filter", response_model=EventsSeries)
@@ -78,12 +81,14 @@ def get_events_by_parameter(
         select(Events.sim_time, Events.value)
         .join(Runs, Events.run_id == Runs.id)
         .where(
-            Runs.user_id == current_user.id,
             Events.run_id == runid,
             Events.parameter == parameter,
             Events.sim_time >= time_min,
         )
     )
+
+    if not current_user.is_superuser:
+        stmt = stmt.where(Runs.user_id == current_user.id)
 
     if time_max != -1:
         stmt = stmt.where(Events.sim_time <= time_max)

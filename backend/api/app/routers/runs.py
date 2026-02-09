@@ -30,7 +30,12 @@ def create_run(
 @router.get("/", response_model=List[RunsRead])
 def get_runs(session: Session = Depends(get_session),
     current_user = Depends(get_current_user)):
-    stmt = select(Runs).where(Runs.user_id == current_user.id)
+
+    if current_user.is_superuser:
+        stmt = select(Runs)
+    else:
+        stmt = select(Runs).where(Runs.user_id == current_user.id)
+            
     return session.exec(stmt).all()
 
 @router.put("/{run_id}/ended", response_model=Runs)
