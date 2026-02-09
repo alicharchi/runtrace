@@ -2,5 +2,5 @@ kafka-python
 SQLAlchemy
 psycopg2-binary
 msgpack
-pydantic==2.6.1
+pydantic[email]==2.6.1
 pydantic-settings==2.2.1
