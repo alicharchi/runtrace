@@ -52,6 +52,8 @@ with open(configFilePath, 'r') as f:
     configData = json.load(f)    
 
 Base_URL = configData["Runs_Registry"]
+userName = configData["user"]
+Password = configData["password"]
 Kafka_Broker = configData["Broker"]
 
 parser = argparse.ArgumentParser()
@@ -66,72 +68,72 @@ if not os.path.exists(args.file):
 
 sim_time = 0.0
 
-runManager = RunManager(Base_URL)
-run_id = runManager.Register()
+with RunManager(Base_URL, userName,Password) as rm:
+    run_id = rm.Register()
 
-print(f'Run registerd as {run_id}')
+    print(f'Run registerd as {run_id}')
 
-ignored_prefixes = [r'//',r'/*',r'\*',r'|']
+    ignored_prefixes = [r'//',r'/*',r'\*',r'|']
 
-extractors = []
+    extractors = []
 
-for ex in configData["extractors"]:
-    extractors.append(DataExtractor(ex["name"],ex["pattern"],ex["groups"]))
+    for ex in configData["extractors"]:
+        extractors.append(DataExtractor(ex["name"],ex["pattern"],ex["groups"]))
 
-header_done = False
-header = {key:None for key in ["Build","Exec","Date","Time","PID","Case","nProcs","Host"]}
-ignored_Lines = 0
-try:
-    iters = {}
-    with open(args.file, "r") as file:               
-        i = 0
-        with KafkaTransmitter(Kafka_Broker) as tx:
-            for line in file:            
-                event = line.strip()
+    header_done = False
+    header = {key:None for key in ["Build","Exec","Date","Time","PID","Case","nProcs","Host"]}
+    ignored_Lines = 0
+    try:
+        iters = {}
+        with open(args.file, "r") as file:               
+            i = 0
+            with KafkaTransmitter(Kafka_Broker) as tx:
+                for line in file:            
+                    event = line.strip()
 
-                if event=='' or any(event.startswith(p) for p in ignored_prefixes):
-                    ignored_Lines+=1
-                    continue
-                
-                if (header_done==False and (event.lower()=="create time" or all(value is not None for value in header.values()))):
-                    header_done=True
-                    submitRunHeader(header,runManager)
-                    continue
-
-                if (header_done==False):
-                    if (":" in event):
-                        key, value = (s.strip() for s in event.split(":", 1))
-                        if (key in header):
-                            header[key]=value
-                    continue
+                    if event=='' or any(event.startswith(p) for p in ignored_prefixes):
+                        ignored_Lines+=1
+                        continue
                     
-                m = re.match(r"^Time\s+=\s+([-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?)",event)
-                if m:
-                    sim_time = float(m.group(1))
-                    iters = {k: 0 for k in iters}
-                    i+=1
-                    if (i % 1000 == 0): print(f'Sent t={sim_time}')
-                    continue            
-                    
-                for ext in extractors:
-                    m = ext.Get(event)
-                    if m is not None:
-                        message = {"run_id":run_id, "sim_time":sim_time}
-                        for key,value in m.items():                        
-                            iters[key] = iters.get(key, -1) + 1
-                            it_str = '' if iters[key]==0 else f'_{iters[key]}'
-                            kv = {"parameter":f'{key}{it_str}', "value":value}                        
-                            tx.Transmit(message | kv , "events")
-                    break
+                    if (header_done==False and (event.lower()=="create time" or all(value is not None for value in header.values()))):
+                        header_done=True
+                        submitRunHeader(header,rm)
+                        continue
 
-except FileNotFoundError:
-    print(f"Error: The file '{args.file}' was not found.")
-    runManager.MarkAsEnded(-1)
-except Exception as e:
-    print(f"An error occurred: {e}")
-    runManager.MarkAsEnded(-2)
+                    if (header_done==False):
+                        if (":" in event):
+                            key, value = (s.strip() for s in event.split(":", 1))
+                            if (key in header):
+                                header[key]=value
+                        continue
+                        
+                    m = re.match(r"^Time\s+=\s+([-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?)",event)
+                    if m:
+                        sim_time = float(m.group(1))
+                        iters = {k: 0 for k in iters}
+                        i+=1
+                        if (i % 1000 == 0): print(f'Sent t={sim_time}')
+                        continue            
+                        
+                    for ext in extractors:
+                        m = ext.Get(event)
+                        if m is not None:
+                            message = {"run_id":run_id, "sim_time":sim_time}
+                            for key,value in m.items():                        
+                                iters[key] = iters.get(key, -1) + 1
+                                it_str = '' if iters[key]==0 else f'_{iters[key]}'
+                                kv = {"parameter":f'{key}{it_str}', "value":value}                        
+                                tx.Transmit(message | kv , "events")
+                        break
 
-print(f"Ignored lines: {ignored_Lines}")
-print(f"Times sent: {i}")
+    except FileNotFoundError:
+        print(f"Error: The file '{args.file}' was not found.")
+        rm.MarkAsEnded(-1)
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        rm.MarkAsEnded(-2)
 
-runManager.MarkAsEnded(0)
+    print(f"Ignored lines: {ignored_Lines}")
+    print(f"Times sent: {i}")
+
+    rm.MarkAsEnded(0)

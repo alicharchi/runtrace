@@ -1,5 +1,7 @@
 {
   "Runs_Registry": "http://localhost:8001",
+  "user":"user@test.com",
+  "password":"test!123",
   "Broker": "localhost:9092",
   "extractors": [
     {
