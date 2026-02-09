@@ -42,6 +42,7 @@ export default function Login({ setToken }) {
       
       setToken(token);
       localStorage.setItem("token", token);
+      localStorage.setItem("email", email);
     } catch (err) {
       setError(err.message);
     }

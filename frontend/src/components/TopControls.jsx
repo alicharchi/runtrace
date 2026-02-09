@@ -11,7 +11,12 @@ export default function TopControls({
   token,
 }) {
   return (
-    <Row className="align-items-center mb-3">
+    <Row
+      className="align-items-center mb-3"
+      style={{
+        marginTop: "1rem", 
+      }}
+    >
       <Col xs="12" md="8">
         <RunParameterSelector
           runs={runs}

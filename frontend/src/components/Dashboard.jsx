@@ -5,7 +5,7 @@ import PlotArea from "./PlotArea";
 import BottomControls from "./BottomControls";
 import { fetchPlotData } from "../api";
 
-export default function Dashboard({ runs, token, setToken }) {
+export default function Dashboard({ runs, token, setToken, email }) {
   const [runId, setRunId] = useState(null);
   const [parameter, setParameter] = useState(null);
 
@@ -15,7 +15,7 @@ export default function Dashboard({ runs, token, setToken }) {
 
   const [refreshSec, setRefreshSec] = useState(5);
   const [lastRefresh, setLastRefresh] = useState(null);
-  
+
   useEffect(() => {
     setParameter(null);
     setPlotData([]);
@@ -59,15 +59,29 @@ export default function Dashboard({ runs, token, setToken }) {
 
   return (
     <Container fluid className="p-3">
-      <Row className="align-items-center mb-4">
+      <Row
+        className="align-items-center mb-4 shadow-sm rounded p-3"
+        style={{
+          backgroundColor: "white",
+          position: "sticky",
+          top: 0,
+          zIndex: 1000,
+        }}
+      >
         <Col xs="12" sm={8} className="mb-2 mb-sm-0">
           <h2 className="m-0">Parameter Viewer</h2>
         </Col>
-        <Col xs="12" sm={4} className="text-sm-end">
+        <Col
+          xs="12"
+          sm={4}
+          className="text-sm-end d-flex justify-content-sm-end align-items-center gap-2"
+        >
+          {email && <span className="fw-bold">{email}</span>}
           <Button
             variant="secondary"
             onClick={() => {
               localStorage.removeItem("token");
+              localStorage.removeItem("email");
               setToken(null);
             }}
           >
@@ -75,7 +89,7 @@ export default function Dashboard({ runs, token, setToken }) {
           </Button>
         </Col>
       </Row>
-      
+
       <TopControls
         runs={runs}
         runId={runId}
@@ -85,9 +99,9 @@ export default function Dashboard({ runs, token, setToken }) {
         setParametersLoading={setParametersLoading}
         token={token}
       />
-
-      <PlotArea plotData={plotData} parameter={parameter} loading={isLoading} />
       
+      <PlotArea plotData={plotData} parameter={parameter} loading={isLoading} />
+
       <BottomControls
         refreshSec={refreshSec}
         setRefreshSec={setRefreshSec}
