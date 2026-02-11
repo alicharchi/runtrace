@@ -3,13 +3,10 @@ import { Spinner } from "react-bootstrap";
 import { fetchParameters } from "../api";
 
 export default function RunParameterSelector({
-  runs,
   selectedRunId,
   selectedParameter,
-  onRunChange,
   onParameterChange,
-  showAllRunsOption = true,
-  token, 
+  token,
 }) {
   const [parameters, setParameters] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -17,11 +14,11 @@ export default function RunParameterSelector({
   useEffect(() => {
     let cancelled = false;
 
-    onParameterChange(null);
+    onParameterChange(null); // reset parameter when run changes
     setParameters([]);
     setLoading(false);
 
-    if (!selectedRunId || !token) return; 
+    if (!selectedRunId || !token) return;
 
     async function loadParameters() {
       setLoading(true);
@@ -47,33 +44,6 @@ export default function RunParameterSelector({
 
   return (
     <div className="run-parameter-selector d-flex gap-2 align-items-center">
-      <div className="d-flex align-items-center">
-        <select
-          value={selectedRunId ?? ""}
-          onChange={(e) =>
-            onRunChange(e.target.value ? Number(e.target.value) : null)
-          }
-        >
-          {showAllRunsOption && <option value="">All runs</option>}
-          {runs.map((run) => (
-            <option key={run.id} value={run.id}>
-              Run {run.id}
-            </option>
-          ))}
-        </select>
-
-        {loading && (
-          <Spinner
-            animation="border"
-            size="sm"
-            role="status"
-            className="ms-2"
-          >
-            <span className="visually-hidden">Loading...</span>
-          </Spinner>
-        )}
-      </div>
-
       <select
         value={selectedParameter ?? ""}
         disabled={loading || parameters.length === 0}
@@ -93,6 +63,17 @@ export default function RunParameterSelector({
           </option>
         ))}
       </select>
+
+      {loading && (
+        <Spinner
+          animation="border"
+          size="sm"
+          role="status"
+          className="ms-2"
+        >
+          <span className="visually-hidden">Loading...</span>
+        </Spinner>
+      )}
     </div>
   );
 }
