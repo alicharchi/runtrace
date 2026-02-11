@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Row, Col, Container, Button } from "react-bootstrap";
+import { Container, Button, Spinner, Alert } from "react-bootstrap";
 import RunsTable from "./RunsTable";
 import PlotArea from "./PlotArea";
 import RunParameterSelector from "./RunParameterSelector";
 import BottomControls from "./BottomControls";
-import { fetchPlotData } from "../api";
+import { fetchPlotData, fetchRuns } from "../api";
 
 const PANEL_WIDTH_KEY = "runsPanelWidth";
 const PANEL_VISIBLE_KEY = "runsPanelVisible";
@@ -14,7 +14,8 @@ const loadPanelWidth = () => {
   return Number.isFinite(v) && v > 200 ? v : 400;
 };
 
-export default function Dashboard({ runs, token, setToken, email }) {
+export default function Runs({ token }) {
+  const [runs, setRuns] = useState([]);
   const [runId, setRunId] = useState(null);
   const [parameter, setParameter] = useState(null);
 
@@ -34,8 +35,38 @@ export default function Dashboard({ runs, token, setToken, email }) {
   const headerRef = useRef(null);
   const [headerBottom, setHeaderBottom] = useState(0);
 
-  /* ---------------- layout helpers ---------------- */
+  const [loadingRuns, setLoadingRuns] = useState(true);
+  const [runsError, setRunsError] = useState("");
 
+  /* ---------------- fetch runs ---------------- */
+  const loadRuns = useCallback(async () => {
+    if (!token) return;
+    setLoadingRuns(true);
+    setRunsError("");
+    try {
+      const data = await fetchRuns(token);
+      setRuns(data);
+    } catch (err) {
+      console.error(err);
+      setRunsError("Failed to load runs");
+      setRuns([]);
+    } finally {
+      setLoadingRuns(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    loadRuns();
+  }, [loadRuns]);
+
+  /* ---------------- auto-select first run ---------------- */
+  useEffect(() => {
+    if (!loadingRuns && runs.length > 0 && runId === null) {
+      setRunId(runs[0].id);
+    }
+  }, [loadingRuns, runs, runId]);
+
+  /* ---------------- layout helpers ---------------- */
   useEffect(() => {
     if (headerRef.current) {
       const rect = headerRef.current.getBoundingClientRect();
@@ -48,7 +79,6 @@ export default function Dashboard({ runs, token, setToken, email }) {
   }, [leftVisible]);
 
   /* ---------------- plot logic ---------------- */
-
   useEffect(() => {
     setParameter(null);
     setPlotData([]);
@@ -74,14 +104,12 @@ export default function Dashboard({ runs, token, setToken, email }) {
     if (!runId || !parameter || refreshSec === 0) return;
 
     let cancelled = false;
-
     const wrappedFetch = async () => {
       if (!cancelled) await fetchAndSet();
     };
 
     wrappedFetch();
     const intervalId = setInterval(wrappedFetch, refreshSec * 1000);
-
     return () => {
       cancelled = true;
       clearInterval(intervalId);
@@ -89,7 +117,6 @@ export default function Dashboard({ runs, token, setToken, email }) {
   }, [fetchAndSet, refreshSec, runId, parameter]);
 
   /* ---------------- resize logic ---------------- */
-
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!isResizing) return;
@@ -115,31 +142,9 @@ export default function Dashboard({ runs, token, setToken, email }) {
   const isLoading = plotLoading && !!parameter;
 
   /* ---------------- render ---------------- */
-
   return (
     <Container fluid className="p-3" ref={containerRef}>
-      <Row
-        ref={headerRef}
-        className="align-items-center mb-4 shadow-sm rounded p-3"
-        style={{ backgroundColor: "white", position: "sticky", top: 0, zIndex: 1000 }}
-      >
-        <Col xs="12" sm={8}>
-          <h2 className="m-0">Parameter Viewer</h2>
-        </Col>
-        <Col sm={4} className="text-end d-flex justify-content-end gap-2">
-          {email && <span className="fw-bold">{email}</span>}
-          <Button
-            variant="secondary"
-            onClick={() => {
-              localStorage.removeItem("token");
-              localStorage.removeItem("email");
-              setToken(null);
-            }}
-          >
-            Logout
-          </Button>
-        </Col>
-      </Row>
+      <div ref={headerRef} />
 
       {!leftVisible && (
         <div
@@ -191,11 +196,21 @@ export default function Dashboard({ runs, token, setToken, email }) {
                 ×
               </Button>
 
-              <RunsTable
-                runs={runs}
-                selectedRunId={runId}
-                onSelectRun={setRunId}
-              />
+              {loadingRuns ? (
+                <div className="text-center mt-3">
+                  <Spinner animation="border" size="sm" /> Loading runs...
+                </div>
+              ) : runsError ? (
+                <Alert variant="danger" className="mt-3">
+                  {runsError}
+                </Alert>
+              ) : (
+                <RunsTable
+                  runs={runs}
+                  selectedRunId={runId}
+                  onSelectRun={setRunId}
+                />
+              )}
             </>
           )}
         </div>
@@ -215,7 +230,11 @@ export default function Dashboard({ runs, token, setToken, email }) {
               onParameterChange={setParameter}
               token={token}
             />
-            <PlotArea plotData={plotData} parameter={parameter} loading={isLoading} />
+            <PlotArea
+              plotData={plotData}
+              parameter={parameter}
+              loading={isLoading}
+            />
           </div>
         )}
       </div>

@@ -1,24 +1,30 @@
 import { useState } from "react";
-import { Container, Row, Col, Form, Button, Alert } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
+import { Container, Row, Col, Form, Button, Alert, Spinner } from "react-bootstrap";
 import { API_BASE } from "../config";
 
 export default function Login({ setToken }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  
+  const [loading, setLoading] = useState(false); // <-- loading state
+
+  const navigate = useNavigate();
+
   const isValidEmail = (email) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true); // <-- start loading
 
     if (!isValidEmail(email)) {
       setError("Please enter a valid email address.");
+      setLoading(false);
       return;
     }
-    
+
     const formData = new URLSearchParams();
     formData.append("username", email);
     formData.append("password", password);
@@ -39,12 +45,16 @@ export default function Login({ setToken }) {
       const token = data.access_token;
 
       if (!token) throw new Error("No token received");
-      
+
+      // Save token and redirect
       setToken(token);
       localStorage.setItem("token", token);
       localStorage.setItem("email", email);
+      navigate("/dashboard/runs", { replace: true });
     } catch (err) {
       setError(err.message);
+    } finally {
+      setLoading(false); // <-- stop loading
     }
   };
 
@@ -65,6 +75,7 @@ export default function Login({ setToken }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={loading} // <-- disable during loading
               />
             </Form.Group>
 
@@ -76,11 +87,26 @@ export default function Login({ setToken }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={loading} // <-- disable during loading
               />
             </Form.Group>
 
-            <Button type="submit" variant="primary" className="w-100">
-              Login
+            <Button type="submit" variant="primary" className="w-100" disabled={loading}>
+              {loading ? (
+                <>
+                  <Spinner
+                    as="span"
+                    animation="border"
+                    size="sm"
+                    role="status"
+                    aria-hidden="true"
+                    className="me-2"
+                  />
+                  Logging in...
+                </>
+              ) : (
+                "Login"
+              )}
             </Button>
           </Form>
         </Col>
