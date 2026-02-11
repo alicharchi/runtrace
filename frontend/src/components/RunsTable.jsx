@@ -1,34 +1,38 @@
 import { Table, Button } from "react-bootstrap";
 
-export default function RunsTable({ runs, onSelectRun }) {
+export default function RunsTable({ runs, onSelectRun, selectedRunId }) {
   return (
     <div>
-      <h5>Runs</h5>
+      <h5 className="mb-2">Runs</h5>
       <Table striped bordered hover size="sm" responsive>
         <thead>
           <tr>
             <th>ID</th>
-            <th>Time</th>
             <th>Status</th>
-            <th>Exit Flag</th>
-            <th>End Time</th>
-            <th>User ID</th>
-            <th>Actions</th>
+            <th>Exit</th>
+            <th>User</th>
+            <th />
           </tr>
         </thead>
         <tbody>
           {runs.map((run) => (
-            <tr key={run.id}>
+            <tr
+              key={run.id}
+              style={{
+                backgroundColor:
+                  run.id === selectedRunId ? "#e9f2ff" : undefined,
+                fontWeight:
+                  run.id === selectedRunId ? "600" : "normal",
+              }}
+            >
               <td>{run.id}</td>
-              <td>{run.time}</td>
               <td>{run.status}</td>
               <td>{run.exitflag}</td>
-              <td>{run.endTime}</td>
               <td>{run.user_id}</td>
               <td>
                 <Button
                   size="sm"
-                  variant="primary"
+                  variant={run.id === selectedRunId ? "primary" : "outline-primary"}
                   onClick={() => onSelectRun(run.id)}
                 >
                   Select
