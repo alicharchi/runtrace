@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Row, Col, Container, Button } from "react-bootstrap";
 import RunsTable from "./RunsTable";
 import PlotArea from "./PlotArea";
@@ -34,54 +34,62 @@ export default function Dashboard({ runs, token, setToken, email }) {
   const headerRef = useRef(null);
   const [headerBottom, setHeaderBottom] = useState(0);
 
+  /* ---------------- layout helpers ---------------- */
+
   useEffect(() => {
     if (headerRef.current) {
       const rect = headerRef.current.getBoundingClientRect();
       setHeaderBottom(rect.bottom);
     }
   }, []);
-  
+
   useEffect(() => {
     localStorage.setItem(PANEL_VISIBLE_KEY, JSON.stringify(leftVisible));
   }, [leftVisible]);
+
+  /* ---------------- plot logic ---------------- */
 
   useEffect(() => {
     setParameter(null);
     setPlotData([]);
   }, [runId]);
-  
-  useEffect(() => {
-    if (!runId || !parameter) {
+
+  const fetchAndSet = useCallback(async () => {
+    if (!runId || !parameter) return;
+
+    setPlotLoading(true);
+    try {
+      const points = await fetchPlotData(runId, parameter, token);
+      setPlotData(points);
+      setLastRefresh(new Date());
+    } catch (err) {
+      console.error(err);
       setPlotData([]);
-      return;
+    } finally {
+      setPlotLoading(false);
     }
+  }, [runId, parameter, token]);
+
+  useEffect(() => {
+    if (!runId || !parameter || refreshSec === 0) return;
 
     let cancelled = false;
 
-    const fetchAndSet = async () => {
-      setPlotLoading(true);
-      try {
-        const points = await fetchPlotData(runId, parameter, token);
-        if (!cancelled) {
-          setPlotData(points);
-          setLastRefresh(new Date());
-        }
-      } catch (err) {
-        if (!cancelled) console.error(err);
-      } finally {
-        if (!cancelled) setPlotLoading(false);
-      }
+    const wrappedFetch = async () => {
+      if (!cancelled) await fetchAndSet();
     };
 
-    fetchAndSet();
-    const intervalId = setInterval(fetchAndSet, refreshSec * 1000);
+    wrappedFetch();
+    const intervalId = setInterval(wrappedFetch, refreshSec * 1000);
 
     return () => {
       cancelled = true;
       clearInterval(intervalId);
     };
-  }, [runId, parameter, refreshSec, token]);
-  
+  }, [fetchAndSet, refreshSec, runId, parameter]);
+
+  /* ---------------- resize logic ---------------- */
+
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!isResizing) return;
@@ -106,8 +114,10 @@ export default function Dashboard({ runs, token, setToken, email }) {
 
   const isLoading = plotLoading && !!parameter;
 
+  /* ---------------- render ---------------- */
+
   return (
-    <Container fluid className="p-3" ref={containerRef}>      
+    <Container fluid className="p-3" ref={containerRef}>
       <Row
         ref={headerRef}
         className="align-items-center mb-4 shadow-sm rounded p-3"
@@ -130,7 +140,7 @@ export default function Dashboard({ runs, token, setToken, email }) {
           </Button>
         </Col>
       </Row>
-      
+
       {!leftVisible && (
         <div
           style={{
@@ -184,26 +194,19 @@ export default function Dashboard({ runs, token, setToken, email }) {
               <RunsTable
                 runs={runs}
                 selectedRunId={runId}
-                onSelectRun={(id) => {
-                  setRunId(id);
-                  setLeftVisible(true);
-                }}
+                onSelectRun={setRunId}
               />
             </>
           )}
         </div>
-        
+
         {leftVisible && (
           <div
-            style={{
-              width: 5,
-              cursor: "col-resize",
-              backgroundColor: "#ddd",
-            }}
+            style={{ width: 5, cursor: "col-resize", backgroundColor: "#ddd" }}
             onMouseDown={() => setIsResizing(true)}
           />
         )}
-        
+
         {runId && (
           <div style={{ flex: 1, overflowY: "auto", paddingLeft: 10 }}>
             <RunParameterSelector
@@ -221,6 +224,7 @@ export default function Dashboard({ runs, token, setToken, email }) {
         refreshSec={refreshSec}
         setRefreshSec={setRefreshSec}
         lastRefresh={lastRefresh}
+        onManualRefresh={fetchAndSet}
       />
     </Container>
   );
