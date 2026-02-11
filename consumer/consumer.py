@@ -30,7 +30,7 @@ def decode_msg(msg):
 # -------------------------------
 # Configuration
 # -------------------------------
-if not logging.getLogger().handlers:    
+if not logging.getLogger().handlers:
     setup_logging("consumer", level=CONFIG.LOG_LEVEL_NUM)
 
 logger = logging.getLogger(__name__)
@@ -40,11 +40,13 @@ try:
     password = get_db_password()
 
     connection_string = (
-        f"postgresql+psycopg2://{CONFIG.DB_USER}:{password}@{CONFIG.DB_HOST}:{CONFIG.DB_PORT}/{CONFIG.DB_NAME}"
+        f"postgresql+psycopg2://{CONFIG.DB_USER}:{password}@"
+        f"{CONFIG.DB_HOST}:{CONFIG.DB_PORT}/{CONFIG.DB_NAME}"
     )
 
     logger.info(
-        f"Connecting to db: postgresql+psycopg2://{CONFIG.DB_USER}@{CONFIG.DB_HOST}:{CONFIG.DB_PORT}/{CONFIG.DB_NAME}"
+        f"Connecting to db: postgresql+psycopg2://{CONFIG.DB_USER}@"
+        f"{CONFIG.DB_HOST}:{CONFIG.DB_PORT}/{CONFIG.DB_NAME}"
     )
 
     engine = create_engine(connection_string)
@@ -57,7 +59,7 @@ try:
         Column("run_id", Integer),
         Column("sim_time", Double),
         Column("parameter", String),
-        Column("value", Double),        
+        Column("value", Double),
     )
 
     logger.info("Creating metadata")
@@ -75,8 +77,9 @@ try:
     consumer = KafkaConsumer(
         "events",
         bootstrap_servers=[CONFIG.MSG_BROKER],
-        group_id="g1",
-        auto_offset_reset="earliest"
+        group_id="g1",                 
+        auto_offset_reset="earliest",
+        enable_auto_commit=True        
     )
 
     logger.info("Getting messages")
@@ -86,32 +89,48 @@ try:
 
     with engine.connect() as connection:
         while True:
-            for message in consumer:
-                if message.value is None:
-                    continue
+            records = consumer.poll(timeout_ms=1000)
 
-                try:
-                    decoded = decode_msg(message.value)
-                except Exception:
-                    logger.exception("Bad message")
-                    continue
+            for tp, messages in records.items():
+                for message in messages:
+                    if message.value is None:
+                        continue
 
-                batch.append(decoded)
-
-                if len(batch) >= BATCH_SIZE:
-                    connection.execute(insert(events_table), batch)
-                    logger.info(
-                        f"Inserted batch of {len(batch)} records. "
-                        f"Last sim_time={batch[-1]['sim_time']}"
+                    logger.debug(
+                        "Received message topic=%s partition=%d offset=%d size=%d",
+                        message.topic,
+                        message.partition,
+                        message.offset,
+                        len(message.value)
                     )
-                    batch.clear()
-                    connection.commit()
+
+                    try:
+                        decoded = decode_msg(message.value)
+                    except Exception:
+                        logger.exception("Bad message")
+                        continue
+
+                    batch.append(decoded)
+
+                    if len(batch) >= BATCH_SIZE:
+                        connection.execute(insert(events_table), batch)
+                        connection.commit()
+                        logger.info(
+                            "Inserted batch of %d records. Last sim_time=%s",
+                            len(batch),
+                            batch[-1]["sim_time"],
+                        )
+                        batch.clear()
 
             if batch:
                 connection.execute(insert(events_table), batch)
-                logger.info(f"Inserted final batch of {len(batch)} records")
-                batch.clear()
                 connection.commit()
+                logger.info(
+                    "Inserted partial batch of %d records. Last sim_time=%s",
+                    len(batch),
+                    batch[-1]["sim_time"],
+                )
+                batch.clear()
 
 except NoBrokersAvailable:
     logger.error(
