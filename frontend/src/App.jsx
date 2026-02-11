@@ -1,45 +1,51 @@
-import { useEffect, useState } from "react";
-import { Container } from "react-bootstrap";
-import Dashboard from "./components/Dashboard";
-import Login from "./components/Login";
-import { fetchRuns } from "./api";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
 
 export default function App() {
-  const [runs, setRuns] = useState([]);
-  const [token, setToken] = useState(localStorage.getItem("token") || null);
-  const [email, setEmail] = useState(localStorage.getItem("email") || null);
+  const [token, setToken] = useState(null);
 
+  // Restore token from localStorage on app start
   useEffect(() => {
-    if (!token) return;
+    const savedToken = localStorage.getItem("token");
+    if (savedToken) setToken(savedToken);
+  }, []);
 
-    fetchRuns(token)
-      .then(setRuns)
-      .catch(console.error);
-  }, [token]);
-
-  if (!token) {
-    return (
-      <Login
-        setToken={(t) => {
-          setToken(t);
-          localStorage.setItem("token", t);
-        }}
-        setEmail={(e) => {
-          setEmail(e);
-          localStorage.setItem("email", e);
-        }}
-      />
-    );
-  }
-  
   return (
-    <Container fluid className="p-4">
-      <Dashboard
-        runs={runs}
-        token={token}
-        setToken={setToken}
-        email={email}
+    <Routes>
+      {/* Redirect root "/" based on token */}
+      <Route
+        path="/"
+        element={
+          token ? (
+            <Navigate to="/dashboard/runs" replace />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
-    </Container>
+
+      {/* Login route: redirect if already logged in */}
+      <Route
+        path="/login"
+        element={token ? <Navigate to="/dashboard/runs" replace /> : <Login setToken={setToken} />}
+      />
+
+      {/* Protected dashboard route */}
+      <Route
+        path="/dashboard/*"
+        element={
+          token ? (
+            <Dashboard token={token} setToken={setToken} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      {/* Catch-all route */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
