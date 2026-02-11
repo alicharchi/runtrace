@@ -18,7 +18,7 @@ export default function AppNavbar({ email, token, onLogout }) {
           {token && (
             <div className="d-flex align-items-center gap-2 ms-auto">
               {email && <span className="fw-bold">{email}</span>}
-              <Button variant="outline-secondary" size="sm" onClick={handleLogout}>
+              <Button variant="link" className="p-0" onClick={handleLogout}>
                 Logout
               </Button>
             </div>
