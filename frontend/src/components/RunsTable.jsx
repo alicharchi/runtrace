@@ -1,9 +1,10 @@
 import { Table, Button } from "react-bootstrap";
+import RunStatus from "./RunStatus";
 
 export default function RunsTable({
-  runs = [],               // default to empty array
-  onSelectRun = () => {},  // default no-op function
-  selectedRunId = null,    // default to null
+  runs = [],
+  onSelectRun = () => {},
+  selectedRunId = null,
 }) {
   return (
     <div>
@@ -30,14 +31,12 @@ export default function RunsTable({
               <tr
                 key={run.id}
                 style={{
-                  backgroundColor:
-                    run.id === selectedRunId ? "#e9f2ff" : undefined,
-                  fontWeight:
-                    run.id === selectedRunId ? "600" : "normal",
+                  backgroundColor: run.id === selectedRunId ? "#e9f2ff" : undefined,
+                  fontWeight: run.id === selectedRunId ? "600" : "normal",
                 }}
               >
                 <td>{run.id}</td>
-                <td>{run.status}</td>
+                <td><RunStatus status={run.status} /></td>
                 <td>{run.exitflag}</td>
                 <td>{run.user_id}</td>
                 <td>
