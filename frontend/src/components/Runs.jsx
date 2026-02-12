@@ -78,12 +78,13 @@ export default function Runs({ token }) {
     localStorage.setItem(PANEL_VISIBLE_KEY, JSON.stringify(leftVisible));
   }, [leftVisible]);
 
-  /* ---------------- plot logic ---------------- */
+  /* ---------------- reset plot when run changes ---------------- */
   useEffect(() => {
     setParameter(null);
     setPlotData([]);
   }, [runId]);
 
+  /* ---------------- fetch plot ---------------- */
   const fetchAndSet = useCallback(async () => {
     if (!runId || !parameter) return;
 
@@ -100,6 +101,13 @@ export default function Runs({ token }) {
     }
   }, [runId, parameter, token]);
 
+  /* ---------------- fetch once on run/parameter change ---------------- */
+  useEffect(() => {
+    if (!runId || !parameter) return;
+    fetchAndSet();
+  }, [runId, parameter, fetchAndSet]);
+
+  /* ---------------- auto-refresh logic ---------------- */
   useEffect(() => {
     if (!runId || !parameter || refreshSec === 0) return;
 
