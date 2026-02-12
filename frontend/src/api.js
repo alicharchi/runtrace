@@ -35,3 +35,8 @@ export async function fetchPlotData(runId, parameter, token) {
   const data = await fetchWithToken(url, token);
   return data.points || [];
 }
+
+export async function fetchUsers(token) {
+  const url = `${API_BASE}/users`;
+  return fetchWithToken(url, token);
+}

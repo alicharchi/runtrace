@@ -44,7 +44,7 @@ export default function Dashboard({ token, setToken, isSuperUser }) {
             path="users"
             element={
               <RequireSuperUser isSuperUser={isSuperUser}>
-                <Users />
+                <Users token={token}/>
               </RequireSuperUser>
             }
           />
