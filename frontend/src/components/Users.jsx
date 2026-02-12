@@ -1,16 +1,19 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { fetchUsers, addUser, deleteUser } from "../api";
+import { fetchUsers, addUser, deleteUser, updateUser } from "../api";
 import UserType from "./UserType";
 import { Button, Form, Modal, Spinner } from "react-bootstrap";
 
 export default function Users({ token }) {
-  // --- Hooks at top ---
+  // --- Hooks ---
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const [showModal, setShowModal] = useState(false);
-  const [newUser, setNewUser] = useState({
+  const [modalMode, setModalMode] = useState("add"); // "add" or "edit"
+  const [editingUserId, setEditingUserId] = useState(null);
+
+  const [userForm, setUserForm] = useState({
     first_name: "",
     last_name: "",
     email: "",
@@ -26,7 +29,6 @@ export default function Users({ token }) {
   // --- Fetch users ---
   useEffect(() => {
     if (!token) return;
-
     const fetchData = async () => {
       try {
         const users = await fetchUsers(token);
@@ -37,7 +39,6 @@ export default function Users({ token }) {
         setLoading(false);
       }
     };
-
     fetchData();
   }, [token]);
 
@@ -46,26 +47,20 @@ export default function Users({ token }) {
     let filtered = data.filter((user) => {
       const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
       const userEmail = user.email.toLowerCase();
-      return (
-        fullName.includes(filterText.toLowerCase()) ||
-        userEmail.includes(filterText.toLowerCase())
-      );
+      return fullName.includes(filterText.toLowerCase()) || userEmail.includes(filterText.toLowerCase());
     });
 
     if (sortConfig.key) {
       filtered.sort((a, b) => {
         let aValue = a[sortConfig.key];
         let bValue = b[sortConfig.key];
-
         if (typeof aValue === "boolean") aValue = aValue ? 1 : 0;
         if (typeof bValue === "boolean") bValue = bValue ? 1 : 0;
-
         if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
       });
     }
-
     return filtered;
   }, [data, filterText, sortConfig]);
 
@@ -75,39 +70,45 @@ export default function Users({ token }) {
     setSortConfig({ key, direction });
   };
 
-  // --- Add User Handlers ---
+  // --- Modal form change ---
   const handleModalChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setNewUser((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    setUserForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
   };
 
-  const handleAddUser = async (e) => {
+  // --- Add or Update User ---
+  const handleModalSubmit = async (e) => {
     e.preventDefault();
     setModalLoading(true);
     setModalError("");
 
-    // Frontend validation
-    if (!newUser.first_name || !newUser.last_name || !newUser.email || !newUser.password) {
-      setModalError("All fields are required");
-      setModalLoading(false);
-      return;
-    }
-
-    if (data.some((u) => u.email.toLowerCase() === newUser.email.toLowerCase())) {
-      setModalError("Email is already registered");
+    // Basic frontend validation
+    if (!userForm.first_name || !userForm.last_name || !userForm.email || (modalMode === "add" && !userForm.password)) {
+      setModalError("All required fields must be filled");
       setModalLoading(false);
       return;
     }
 
     try {
-      const payload = { ...newUser, is_superuser: newUser.is_superuser ? 1 : 0 };
-      const addedUser = await addUser(payload, token);
-      setData((prev) => [...prev, addedUser]);
+      if (modalMode === "add") {
+        if (data.some((u) => u.email.toLowerCase() === userForm.email.toLowerCase())) {
+          setModalError("Email already registered");
+          setModalLoading(false);
+          return;
+        }
+        const payload = { ...userForm, is_superuser: userForm.is_superuser ? 1 : 0 };
+        const addedUser = await addUser(payload, token);
+        setData((prev) => [...prev, addedUser]);
+      } else if (modalMode === "edit") {
+        const updatePayload = { ...userForm };
+        if (!updatePayload.password) delete updatePayload.password; // optional
+        updatePayload.is_superuser = updatePayload.is_superuser ? 1 : 0;
+        const updatedUser = await updateUser(editingUserId, updatePayload, token);
+        setData((prev) => prev.map((u) => (u.id === editingUserId ? updatedUser : u)));
+      }
       setShowModal(false);
-      setNewUser({ first_name: "", last_name: "", email: "", password: "", is_superuser: false });
+      setUserForm({ first_name: "", last_name: "", email: "", password: "", is_superuser: false });
+      setEditingUserId(null);
     } catch (err) {
       setModalError(err.message);
     } finally {
@@ -115,10 +116,9 @@ export default function Users({ token }) {
     }
   };
 
-  // --- Delete User Handler ---
+  // --- Delete User ---
   const handleDeleteUser = async (userId, fullName) => {
-    if (!window.confirm(`Are you sure you want to delete the user "${fullName}"?`)) return;
-
+    if (!window.confirm(`Are you sure you want to delete "${fullName}"?`)) return;
     try {
       await deleteUser(userId, token);
       setData((prev) => prev.filter((u) => u.id !== userId));
@@ -127,17 +127,30 @@ export default function Users({ token }) {
     }
   };
 
+  // --- Open modal for add or edit ---
+  const openAddModal = () => {
+    setModalMode("add");
+    setUserForm({ first_name: "", last_name: "", email: "", password: "", is_superuser: false });
+    setShowModal(true);
+  };
+
+  const openEditModal = (user) => {
+    setModalMode("edit");
+    setEditingUserId(user.id);
+    setUserForm({ ...user, password: "" }); // password is optional
+    setShowModal(true);
+  };
+
   // --- Early render messages ---
   if (!token) return <p>Please login to see user data.</p>;
   if (loading) return <p>Loading data...</p>;
   if (error) return <p>Error: {error.message}</p>;
 
-  // --- Render ---
   return (
     <div>
       {/* Top controls */}
       <div className="d-flex justify-content-between mb-3">
-        <Button onClick={() => setShowModal(true)}>Add User</Button>
+        <Button onClick={openAddModal}>Add User</Button>
         <Form.Control
           type="text"
           placeholder="Filter by name or email..."
@@ -164,63 +177,52 @@ export default function Users({ token }) {
           </tr>
         </thead>
         <tbody>
-          {filteredData.map((item) => (
-            <tr key={item.id}>
-              <td>{item.first_name} {item.last_name}</td>
-              <td>{item.email}</td>
-              <td><UserType type={item.is_superuser} /></td>
+          {filteredData.map((user) => (
+            <tr key={user.id}>
+              <td>{user.first_name} {user.last_name}</td>
+              <td>{user.email}</td>
+              <td><UserType type={user.is_superuser} /></td>
               <td>
-                <Button
-                  variant="outline-danger"
-                  size="sm"
-                  onClick={() => handleDeleteUser(item.id, `${item.first_name} ${item.last_name}`)}
-                >
-                  Delete
-                </Button>
+                <Button variant="outline-secondary" size="sm" onClick={() => openEditModal(user)}>Edit</Button>{" "}
+                <Button variant="outline-danger" size="sm" onClick={() => handleDeleteUser(user.id, `${user.first_name} ${user.last_name}`)}>Delete</Button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      {/* Add User Modal */}
+      {/* Add/Edit Modal */}
       <Modal show={showModal} onHide={() => setShowModal(false)}>
-        <Form onSubmit={handleAddUser}>
+        <Form onSubmit={handleModalSubmit}>
           <Modal.Header closeButton>
-            <Modal.Title>Add New User</Modal.Title>
+            <Modal.Title>{modalMode === "add" ? "Add New User" : "Edit User"}</Modal.Title>
           </Modal.Header>
           <Modal.Body>
             {modalError && <p className="text-danger">{modalError}</p>}
             <Form.Group className="mb-2">
               <Form.Label>First Name</Form.Label>
-              <Form.Control name="first_name" value={newUser.first_name} onChange={handleModalChange} required />
+              <Form.Control name="first_name" value={userForm.first_name} onChange={handleModalChange} required />
             </Form.Group>
             <Form.Group className="mb-2">
               <Form.Label>Last Name</Form.Label>
-              <Form.Control name="last_name" value={newUser.last_name} onChange={handleModalChange} required />
+              <Form.Control name="last_name" value={userForm.last_name} onChange={handleModalChange} required />
             </Form.Group>
             <Form.Group className="mb-2">
               <Form.Label>Email</Form.Label>
-              <Form.Control name="email" type="email" value={newUser.email} onChange={handleModalChange} required />
+              <Form.Control name="email" type="email" value={userForm.email} onChange={handleModalChange} required />
             </Form.Group>
             <Form.Group className="mb-2">
-              <Form.Label>Password</Form.Label>
-              <Form.Control name="password" type="password" value={newUser.password} onChange={handleModalChange} required />
+              <Form.Label>Password {modalMode === "edit" && "(leave blank to keep current)"}</Form.Label>
+              <Form.Control name="password" type="password" value={userForm.password} onChange={handleModalChange} />
             </Form.Group>
             <Form.Group className="mb-2">
-              <Form.Check
-                type="checkbox"
-                label="Superuser"
-                name="is_superuser"
-                checked={newUser.is_superuser}
-                onChange={handleModalChange}
-              />
+              <Form.Check type="checkbox" label="Superuser" name="is_superuser" checked={userForm.is_superuser} onChange={handleModalChange} />
             </Form.Group>
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
             <Button type="submit" variant="primary" disabled={modalLoading}>
-              {modalLoading ? <Spinner animation="border" size="sm" /> : "Add User"}
+              {modalLoading ? <Spinner animation="border" size="sm" /> : modalMode === "add" ? "Add User" : "Save Changes"}
             </Button>
           </Modal.Footer>
         </Form>

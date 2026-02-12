@@ -75,3 +75,16 @@ export async function deleteUser(userId, token) {
 
   return res.json();
 }
+
+export async function updateUser(userId, updateData, token) {
+  const res = await fetch(`${API_BASE}/users/${userId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(updateData),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "Failed to update user");
+  }
+  return res.json();
+}
