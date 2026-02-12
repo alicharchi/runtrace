@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { fetchUsers, addUser } from "../api";
+import { fetchUsers, addUser, deleteUser } from "../api";
 import UserType from "./UserType";
 import { Button, Form, Modal, Spinner } from "react-bootstrap";
 
@@ -89,6 +89,13 @@ export default function Users({ token }) {
     setModalLoading(true);
     setModalError("");
 
+    // Frontend validation
+    if (!newUser.first_name || !newUser.last_name || !newUser.email || !newUser.password) {
+      setModalError("All fields are required");
+      setModalLoading(false);
+      return;
+    }
+
     if (data.some((u) => u.email.toLowerCase() === newUser.email.toLowerCase())) {
       setModalError("Email is already registered");
       setModalLoading(false);
@@ -96,7 +103,6 @@ export default function Users({ token }) {
     }
 
     try {
-      // send is_superuser as number
       const payload = { ...newUser, is_superuser: newUser.is_superuser ? 1 : 0 };
       const addedUser = await addUser(payload, token);
       setData((prev) => [...prev, addedUser]);
@@ -106,6 +112,18 @@ export default function Users({ token }) {
       setModalError(err.message);
     } finally {
       setModalLoading(false);
+    }
+  };
+
+  // --- Delete User Handler ---
+  const handleDeleteUser = async (userId, fullName) => {
+    if (!window.confirm(`Are you sure you want to delete the user "${fullName}"?`)) return;
+
+    try {
+      await deleteUser(userId, token);
+      setData((prev) => prev.filter((u) => u.id !== userId));
+    } catch (err) {
+      alert(`Failed to delete user: ${err.message}`);
     }
   };
 
@@ -142,6 +160,7 @@ export default function Users({ token }) {
             <th style={{ cursor: "pointer" }} onClick={() => requestSort("is_superuser")}>
               Superuser {sortConfig.key === "is_superuser" ? (sortConfig.direction === "asc" ? "▲" : "▼") : ""}
             </th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -150,6 +169,15 @@ export default function Users({ token }) {
               <td>{item.first_name} {item.last_name}</td>
               <td>{item.email}</td>
               <td><UserType type={item.is_superuser} /></td>
+              <td>
+                <Button
+                  variant="outline-danger"
+                  size="sm"
+                  onClick={() => handleDeleteUser(item.id, `${item.first_name} ${item.last_name}`)}
+                >
+                  Delete
+                </Button>
+              </td>
             </tr>
           ))}
         </tbody>

@@ -58,3 +58,20 @@ export async function addUser(userData, token) {
 
   return res.json();
 }
+
+export async function deleteUser(userId, token) {
+  const res = await fetch(`${API_BASE}/users/${userId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "Failed to delete user");
+  }
+
+  return res.json();
+}
