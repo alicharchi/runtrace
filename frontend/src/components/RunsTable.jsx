@@ -1,9 +1,10 @@
 import { Table, Button } from "react-bootstrap";
 import RunStatus from "./RunStatus";
+import { formatDateTime, calculateDuration } from "../utils";
 
 export default function RunsTable({
   runs = [],
-  onSelectRun = () => {},
+  onSelectRun = () => { },
   selectedRunId = null,
 }) {
   return (
@@ -14,8 +15,11 @@ export default function RunsTable({
           <tr>
             <th>ID</th>
             <th>Status</th>
-            <th>Exit</th>
+            <th>Exit Flag</th>
             <th>User</th>
+            <th>Started</th>
+            <th>Ended</th>
+            <th>Duration</th>
             <th />
           </tr>
         </thead>
@@ -39,6 +43,9 @@ export default function RunsTable({
                 <td><RunStatus status={run.status} /></td>
                 <td>{run.exitflag}</td>
                 <td>{run.user_id}</td>
+                <td>{formatDateTime(run.time)}</td>
+                <td>{formatDateTime(run.endtime)}</td>
+                <td>{calculateDuration(run.time, run.endtime)}</td>
                 <td>
                   <Button
                     size="sm"
