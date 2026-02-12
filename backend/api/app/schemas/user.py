@@ -8,6 +8,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    is_superuser: bool = False
 
 class UserRead(UserBase):
     id: int

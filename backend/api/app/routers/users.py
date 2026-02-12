@@ -33,7 +33,8 @@ def create_user(
         email=user.email,
         first_name=user.first_name,
         last_name=user.last_name,
-        password=hash_password(user.password)
+        password=hash_password(user.password),
+        is_superuser=user.is_superuser
     )
     session.add(db_user)
     session.commit()

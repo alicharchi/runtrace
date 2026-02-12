@@ -40,3 +40,21 @@ export async function fetchUsers(token) {
   const url = `${API_BASE}/users`;
   return fetchWithToken(url, token);
 }
+
+export async function addUser(userData, token) {
+  const res = await fetch(`${API_BASE}/users/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(userData),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "Failed to add user");
+  }
+
+  return res.json();
+}
