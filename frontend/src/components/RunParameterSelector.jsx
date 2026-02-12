@@ -14,7 +14,6 @@ export default function RunParameterSelector({
   useEffect(() => {
     let cancelled = false;
 
-    onParameterChange(null); // reset parameter when run changes
     setParameters([]);
     setLoading(false);
 
@@ -24,11 +23,21 @@ export default function RunParameterSelector({
       setLoading(true);
       try {
         const data = await fetchParameters(selectedRunId, token);
-        if (!cancelled) setParameters(data);
+        if (!cancelled) {
+          setParameters(data);
+
+          // Automatically select first parameter if available
+          if (data.length > 0) {
+            onParameterChange(data[0]);
+          } else {
+            onParameterChange(null);
+          }
+        }
       } catch (err) {
         if (!cancelled) {
           console.error(err);
           setParameters([]);
+          onParameterChange(null);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -49,28 +58,24 @@ export default function RunParameterSelector({
         disabled={loading || parameters.length === 0}
         onChange={(e) => onParameterChange(e.target.value || null)}
       >
-        <option value="">
-          {loading
-            ? "Loading parameters..."
-            : parameters.length === 0
-            ? "No parameters"
-            : "Select parameter"}
-        </option>
+        {loading && (
+          <option value="">Loading parameters...</option>
+        )}
 
-        {parameters.map((param) => (
-          <option key={param} value={param}>
-            {param}
-          </option>
-        ))}
+        {!loading && parameters.length === 0 && (
+          <option value="">No parameters</option>
+        )}
+
+        {!loading &&
+          parameters.map((param) => (
+            <option key={param} value={param}>
+              {param}
+            </option>
+          ))}
       </select>
 
       {loading && (
-        <Spinner
-          animation="border"
-          size="sm"
-          role="status"
-          className="ms-2"
-        >
+        <Spinner animation="border" size="sm" role="status" className="ms-2">
           <span className="visually-hidden">Loading...</span>
         </Spinner>
       )}
