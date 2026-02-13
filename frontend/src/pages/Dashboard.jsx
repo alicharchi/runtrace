@@ -21,7 +21,7 @@ export default function Dashboard({ token, setToken, isSuperUser }) {
       <AppNavbar
         email={email}
         token={token}
-        isSuperUser={isSuperUser} // <-- use state from App.jsx
+        isSuperUser={isSuperUser} 
         onLogout={handleLogout}
       />
 
