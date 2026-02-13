@@ -4,6 +4,8 @@ import RunsTable from "../components/RunsTable";
 import PlotArea from "../components/PlotArea";
 import RunParameterSelector from "../components/RunParameterSelector";
 import BottomControls from "../components/BottomControls";
+import RunInfo from "../components/RuniInfo";
+
 import { fetchPlotData, fetchRuns } from "../api";
 
 const PANEL_WIDTH_KEY = "runsPanelWidth";
@@ -243,6 +245,10 @@ export default function Runs({ token }) {
               parameter={parameter}
               loading={isLoading}
             />
+
+            <div style={{ marginTop: "2rem" }}>
+              <RunInfo runId={runId} token={token}/>
+            </div>
           </div>
         )}
       </div>

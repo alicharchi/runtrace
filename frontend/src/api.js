@@ -88,3 +88,10 @@ export async function updateUser(userId, updateData, token) {
   }
   return res.json();
 }
+
+export async function fetchRunInfo(runId, token) {
+  if (!runId) return [];
+
+  const url = `${API_BASE}/runinfo?runid=${runId}`;
+  return fetchWithToken(url, token);
+}

@@ -1,12 +1,12 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
+from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlmodel import Session, select
 
 from app.utils.auth import get_current_user
 from app.database import get_session
 from app.models.runinfo import RunInfo
 from app.models.run import Runs
-from app.schemas.run import RunInfoCreate
+from app.schemas.runinfo import RunInfoCreate, RunInfoRead
 
 router = APIRouter(tags=["runinfo"])
 
@@ -41,3 +41,20 @@ def create_runinfo(
         session.refresh(db_info)
 
     return db_info_list
+
+@router.get("/runinfo", response_model=List[RunInfoRead])
+def get_parameters(
+    runid: int = Query(..., description="Run id"),
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user),
+):    
+    if not current_user.is_superuser:
+        run = session.get(Runs, runid)
+        if not run or run.user_id != current_user.id:
+            raise HTTPException(
+                status_code=403,
+                detail=f"You do not have access to run {runid}",
+            )
+
+    stmt = select(RunInfo).where(RunInfo.run_id == runid)
+    return session.exec(stmt).all()
