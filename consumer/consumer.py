@@ -62,8 +62,8 @@ try:
         Column("value", Double),
     )
 
-    logger.info("Creating metadata")
-    metadata.create_all(engine)
+    #logger.info("Creating metadata")
+    #metadata.create_all(engine)
 
 except Exception:
     logger.exception("Database initialization failed")
@@ -77,7 +77,7 @@ try:
     consumer = KafkaConsumer(
         "events",
         bootstrap_servers=[CONFIG.MSG_BROKER],
-        group_id="g1",                 
+        group_id="kafka_consumer_1",                 
         auto_offset_reset="earliest",
         enable_auto_commit=True        
     )
