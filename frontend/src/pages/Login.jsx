@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Container, Row, Col, Form, Button, Alert, Spinner } from "react-bootstrap";
 import { API_BASE } from "../config";
 
-export default function Login({ setToken }) {
+export default function Login({ setToken, setIsSuperUser }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false); // <-- loading state
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -17,7 +17,7 @@ export default function Login({ setToken }) {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
-    setLoading(true); // <-- start loading
+    setLoading(true);
 
     if (!isValidEmail(email)) {
       setError("Please enter a valid email address.");
@@ -30,6 +30,7 @@ export default function Login({ setToken }) {
     formData.append("password", password);
 
     try {
+      // Login
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -43,18 +44,32 @@ export default function Login({ setToken }) {
 
       const data = await res.json();
       const token = data.access_token;
-
       if (!token) throw new Error("No token received");
 
-      // Save token and redirect
+      // Save token & email
       setToken(token);
       localStorage.setItem("token", token);
       localStorage.setItem("email", email);
-      navigate("/dashboard/runs", { replace: true });
+
+      // Fetch current user info
+      const meRes = await fetch(`${API_BASE}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!meRes.ok) throw new Error("Failed to fetch user info");
+
+      const meData = await meRes.json();
+      const superUser = meData.is_superuser === true;
+
+      // Update React state AND localStorage
+      setIsSuperUser(superUser); // ✅ important for immediate Navbar update
+      localStorage.setItem("is_superuser", superUser ? "true" : "false");
+
+      // Navigate to dashboard
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false); // <-- stop loading
+      setLoading(false);
     }
   };
 
@@ -75,7 +90,7 @@ export default function Login({ setToken }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={loading} // <-- disable during loading
+                disabled={loading}
               />
             </Form.Group>
 
@@ -87,7 +102,7 @@ export default function Login({ setToken }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                disabled={loading} // <-- disable during loading
+                disabled={loading}
               />
             </Form.Group>
 

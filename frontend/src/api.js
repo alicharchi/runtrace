@@ -35,3 +35,56 @@ export async function fetchPlotData(runId, parameter, token) {
   const data = await fetchWithToken(url, token);
   return data.points || [];
 }
+
+export async function fetchUsers(token) {
+  const url = `${API_BASE}/users`;
+  return fetchWithToken(url, token);
+}
+
+export async function addUser(userData, token) {
+  const res = await fetch(`${API_BASE}/users/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(userData),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "Failed to add user");
+  }
+
+  return res.json();
+}
+
+export async function deleteUser(userId, token) {
+  const res = await fetch(`${API_BASE}/users/${userId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "Failed to delete user");
+  }
+
+  return res.json();
+}
+
+export async function updateUser(userId, updateData, token) {
+  const res = await fetch(`${API_BASE}/users/${userId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(updateData),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "Failed to update user");
+  }
+  return res.json();
+}
