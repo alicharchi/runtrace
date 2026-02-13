@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Container, Button, Spinner, Alert } from "react-bootstrap";
-import RunsTable from "./RunsTable";
-import PlotArea from "./PlotArea";
-import RunParameterSelector from "./RunParameterSelector";
-import BottomControls from "./BottomControls";
+import RunsTable from "../components/RunsTable";
+import PlotArea from "../components/PlotArea";
+import RunParameterSelector from "../components/RunParameterSelector";
+import BottomControls from "../components/BottomControls";
 import { fetchPlotData, fetchRuns } from "../api";
 
 const PANEL_WIDTH_KEY = "runsPanelWidth";
