@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Container, Button, Spinner, Alert } from "react-bootstrap";
-import RunsTable from "./RunsTable";
-import PlotArea from "./PlotArea";
-import RunParameterSelector from "./RunParameterSelector";
-import BottomControls from "./BottomControls";
+import RunsTable from "../components/RunsTable";
+import PlotArea from "../components/PlotArea";
+import RunParameterSelector from "../components/RunParameterSelector";
+import BottomControls from "../components/BottomControls";
+import RunInfo from "../components/RuniInfo";
+
 import { fetchPlotData, fetchRuns } from "../api";
 
 const PANEL_WIDTH_KEY = "runsPanelWidth";
@@ -182,6 +184,7 @@ export default function Runs({ token }) {
       )}
 
       <div style={{ display: "flex", height: "calc(100vh - 120px)" }}>
+        {/* Left Panel */}
         <div
           style={{
             width: leftVisible ? leftWidth : 0,
@@ -223,6 +226,7 @@ export default function Runs({ token }) {
           )}
         </div>
 
+        {/* Resizer */}
         {leftVisible && (
           <div
             style={{ width: 5, cursor: "col-resize", backgroundColor: "#ddd" }}
@@ -230,29 +234,69 @@ export default function Runs({ token }) {
           />
         )}
 
+        {/* Right Panel */}
         {runId && (
-          <div style={{ flex: 1, overflowY: "auto", paddingLeft: 10 }}>
-            <RunParameterSelector
-              selectedRunId={runId}
-              selectedParameter={parameter}
-              onParameterChange={setParameter}
-              token={token}
-            />
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              paddingLeft: 10,
+              overflow: "hidden",
+            }}
+          >
+            {/* RunParameterSelector with margin-bottom */}
+            <div style={{ marginBottom: "1rem" }}>
+              <RunParameterSelector
+                selectedRunId={runId}
+                selectedParameter={parameter}
+                onParameterChange={setParameter}
+                token={token}
+              />
+            </div>
+
+            {/* PlotArea */}
             <PlotArea
               plotData={plotData}
               parameter={parameter}
               loading={isLoading}
             />
+
+            {/* Scrollable RunInfo */}
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                marginTop: "1rem",
+                paddingBottom: "80px",
+              }}
+            >
+              <RunInfo runId={runId} token={token} />
+            </div>
           </div>
         )}
       </div>
 
-      <BottomControls
-        refreshSec={refreshSec}
-        setRefreshSec={setRefreshSec}
-        lastRefresh={lastRefresh}
-        onManualRefresh={fetchAndSet}
-      />
+      {/* Sticky BottomControls */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          width: "100%",
+          zIndex: 1000,
+          padding: "0px 20px 10px",
+          backgroundColor: "white",
+          boxShadow: "0 -2px 5px rgba(0,0,0,0.1)",
+        }}
+      >
+        <BottomControls
+          refreshSec={refreshSec}
+          setRefreshSec={setRefreshSec}
+          lastRefresh={lastRefresh}
+          onManualRefresh={fetchAndSet}
+        />
+      </div>
     </Container>
   );
 }

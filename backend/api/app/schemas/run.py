@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 
@@ -17,18 +17,6 @@ class RunsRead(BaseModel):
     status: int
     exitflag: Optional[int]
     endtime: Optional[datetime]
-
-    class Config:
-        from_attributes = True
-
-class RunInfoCreate(BaseModel):
-    property: str
-    value: str
-
-class RunInfoRead(BaseModel):
-    id: int
-    property: str
-    value: str
 
     class Config:
         from_attributes = True
