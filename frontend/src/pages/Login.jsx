@@ -61,7 +61,7 @@ export default function Login({ setToken, setIsSuperUser }) {
       const superUser = meData.is_superuser === true;
 
       // Update React state AND localStorage
-      setIsSuperUser(superUser); // ✅ important for immediate Navbar update
+      setIsSuperUser(superUser); 
       localStorage.setItem("is_superuser", superUser ? "true" : "false");
 
       // Navigate to dashboard

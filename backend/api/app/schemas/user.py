@@ -3,15 +3,18 @@ from pydantic import BaseModel, EmailStr
 
 class UserBase(BaseModel):
     email: EmailStr
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    first_name: str
+    last_name: str
 
 class UserCreate(UserBase):
     password: str
     is_superuser: bool = False
 
-class UserRead(UserBase):
+class UserPublic(BaseModel):
     id: int
+    email: EmailStr
+    first_name: str
+    last_name: str
     is_active: bool
     is_superuser: bool
     email_verified: bool
@@ -26,3 +29,10 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_superuser: Optional[bool] = None
     email_verified: Optional[bool] = None
+
+class UserDeletedResponse(BaseModel):
+    id: int
+    email: EmailStr
+
+    class Config:
+        orm_mode = True

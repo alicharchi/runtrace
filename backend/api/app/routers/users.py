@@ -3,24 +3,25 @@ from sqlmodel import Session, select
 from typing import List
 
 from app.models.user import User
-from app.schemas.user import UserCreate, UserRead, UserUpdate
+from app.schemas.user import UserCreate, UserPublic, UserUpdate, UserDeletedResponse
 from app.database import get_session
 from app.utils.auth import (
     get_current_user,
     get_current_active_superuser,
     hash_password
 )
+from pydantic import BaseModel, EmailStr
 
 router = APIRouter(
     prefix="/users",
     tags=["users"]
 )
 
-@router.post("/", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
 def create_user(
     user: UserCreate,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_active_superuser) 
+    _: User = Depends(get_current_active_superuser)
 ):
     existing_user = session.exec(select(User).where(User.email == user.email)).first()
     if existing_user:
@@ -41,7 +42,7 @@ def create_user(
     session.refresh(db_user)
     return db_user
 
-@router.get("/", response_model=List[UserRead])
+@router.get("/", response_model=List[UserPublic])
 def list_users(
     session: Session = Depends(get_session),
     _: User = Depends(get_current_active_superuser)
@@ -49,11 +50,13 @@ def list_users(
     users = session.exec(select(User)).all()
     return users
 
-@router.get("/me", response_model=UserRead)
+
+@router.get("/me", response_model=UserPublic)
 def read_me(current_user: User = Depends(get_current_user)):
     return current_user
 
-@router.get("/{user_id}", response_model=UserRead)
+
+@router.get("/{user_id}", response_model=UserPublic)
 def get_user(
     user_id: int,
     session: Session = Depends(get_session),
@@ -64,7 +67,8 @@ def get_user(
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
-@router.patch("/{user_id}", response_model=UserRead)
+
+@router.patch("/{user_id}", response_model=UserPublic)
 def update_user(
     user_id: int,
     user_update: UserUpdate,
@@ -76,10 +80,7 @@ def update_user(
         raise HTTPException(status_code=404, detail="User not found")
     
     if db_user.id != current_user.id and not current_user.is_superuser:
-        raise HTTPException(
-            status_code=403,
-            detail="Not authorized to update this user"
-        )
+        raise HTTPException(status_code=403, detail="Not authorized to update this user")
 
     update_data = user_update.dict(exclude_unset=True)
     if "password" in update_data:
@@ -93,7 +94,8 @@ def update_user(
     session.refresh(db_user)
     return db_user
 
-@router.put("/{user_id}", response_model=UserRead)
+
+@router.put("/{user_id}", response_model=UserPublic)
 def replace_user(
     user_id: int,
     user_update: UserUpdate,
@@ -105,10 +107,7 @@ def replace_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     if db_user.id != current_user.id and not current_user.is_superuser:
-        raise HTTPException(
-            status_code=403,
-            detail="Not authorized to update this user"
-        )
+        raise HTTPException(status_code=403, detail="Not authorized to update this user")
     
     for field, value in user_update.dict(exclude_unset=True).items():
         setattr(db_user, field, value)
@@ -118,7 +117,8 @@ def replace_user(
     session.refresh(db_user)
     return db_user
 
-@router.delete("/{user_id}", response_model=UserRead)
+
+@router.delete("/{user_id}", response_model=UserDeletedResponse)
 def delete_user(
     user_id: int,
     session: Session = Depends(get_session),
@@ -129,12 +129,9 @@ def delete_user(
         raise HTTPException(status_code=404, detail="User not found")    
     
     if db_user.id != current_user.id and not current_user.is_superuser:
-        raise HTTPException(
-            status_code=403,
-            detail="Not authorized to delete this user"
-        )
+        raise HTTPException(status_code=403, detail="Not authorized to delete this user")
 
+    deleted_user = UserDeletedResponse(id=db_user.id, email=db_user.email)
     session.delete(db_user)
-    session.commit()  
-
-    return db_user
+    session.commit()
+    return deleted_user
