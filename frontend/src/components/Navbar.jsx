@@ -11,14 +11,18 @@ export default function AppNavbar({ fullName, token, isSuperUser, onLogout }) {
 
   return (
     <div className="shadow-sm">
-      {/* Top row: App title + name/logout */}
+      {/* Top row: App title + view profile/logout */}
       <Navbar bg="light" expand="lg">
         <Container fluid>
           <Navbar.Brand className="fw-bold">RunTrace</Navbar.Brand>
 
           {token && (
             <div className="d-flex align-items-center gap-2 ms-auto">
-              {fullName && <span className="fw-bold">{fullName}</span>}
+
+              <Button as={NavLink} to="/dashboard/profile" variant="link" className="p-0" >
+                {fullName}
+              </Button>
+
               <Button variant="link" className="p-0" onClick={handleLogout}>
                 Logout
               </Button>

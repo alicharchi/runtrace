@@ -5,6 +5,7 @@ import Runs from "./Runs";
 import Users from "../components/Users";
 import RequireSuperUser from "../components/RequireSuperUser";
 import Welcome from "./Welcome";
+import CurrentUserProfile from "./Profile";
 
 export default function Dashboard({ token, setToken, isSuperUser }) {  
   const fullName = localStorage.getItem("fullName");
@@ -39,6 +40,8 @@ export default function Dashboard({ token, setToken, isSuperUser }) {
               </RequireSuperUser>
             }
           />
+
+          <Route path="profile" element={<CurrentUserProfile token={token}/>} />
 
           <Route path="*" element={<Navigate to="." replace />} />
         </Routes>

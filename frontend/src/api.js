@@ -95,3 +95,41 @@ export async function fetchRunInfo(runId, token) {
   const url = `${API_BASE}/runinfo?runid=${runId}`;
   return fetchWithToken(url, token);
 }
+
+export async function login(email, password) {
+  const formData = new URLSearchParams();
+  formData.append("username", email);
+  formData.append("password", password);
+
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: formData.toString(),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "Login failed");
+  }
+
+  const data = await res.json();
+  if (!data.access_token) {
+    throw new Error("No token received");
+  }
+
+  return data.access_token;
+}
+
+export async function fetchCurrentUser(token) {
+  const res = await fetch(`${API_BASE}/users/me`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch user info");
+  }
+
+  return res.json();
+}
