@@ -6,20 +6,21 @@ import Users from "../components/Users";
 import RequireSuperUser from "../components/RequireSuperUser";
 import Welcome from "./Welcome";
 
-export default function Dashboard({ token, setToken, isSuperUser }) {
-  const email = localStorage.getItem("email");
+export default function Dashboard({ token, setToken, isSuperUser }) {  
+  const fullName = localStorage.getItem("fullName");
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("email");
     localStorage.removeItem("is_superuser");
+    localStorage.removeItem("fullName");
     setToken(null);
   };
 
   return (
     <>
       <AppNavbar
-        email={email}
+        fullName={fullName}
         token={token}
         isSuperUser={isSuperUser} 
         onLogout={handleLogout}

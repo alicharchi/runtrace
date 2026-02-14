@@ -59,11 +59,13 @@ export default function Login({ setToken, setIsSuperUser }) {
 
       const meData = await meRes.json();
       const superUser = meData.is_superuser === true;
+      const fullName = `${meData.first_name} ${meData.last_name}`;
 
       // Update React state AND localStorage
       setIsSuperUser(superUser); 
       localStorage.setItem("is_superuser", superUser ? "true" : "false");
-
+      localStorage.setItem("fullName",fullName);
+      
       // Navigate to dashboard
       navigate("/dashboard", { replace: true });
     } catch (err) {
