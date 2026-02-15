@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Container } from "react-bootstrap";
 import { Routes, Route, Navigate } from "react-router-dom";
 import AppNavbar from "../components/Navbar";
@@ -5,23 +6,32 @@ import Runs from "./Runs";
 import Users from "../components/Users";
 import RequireSuperUser from "../components/RequireSuperUser";
 import Welcome from "./Welcome";
+import CurrentUserProfile from "./Profile";
 
-export default function Dashboard({ token, setToken, isSuperUser }) {
-  const email = localStorage.getItem("email");
+export default function Dashboard({ token, setToken, isSuperUser,fullName, setFullName }) {  
+  
+  useEffect(() => {
+    if (token) {
+      const storedName = localStorage.getItem("fullName") || "";
+      setFullName(storedName);
+    }
+  }, [token]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("email");
     localStorage.removeItem("is_superuser");
+    localStorage.removeItem("fullName");
     setToken(null);
+    setFullName("");
   };
 
   return (
     <>
       <AppNavbar
-        email={email}
+        fullName={fullName}
         token={token}
-        isSuperUser={isSuperUser} 
+        isSuperUser={isSuperUser}
         onLogout={handleLogout}
       />
 
@@ -34,9 +44,14 @@ export default function Dashboard({ token, setToken, isSuperUser }) {
             path="users"
             element={
               <RequireSuperUser isSuperUser={isSuperUser}>
-                <Users token={token}/>
+                <Users token={token} />
               </RequireSuperUser>
             }
+          />
+
+          <Route
+            path="profile"
+            element={<CurrentUserProfile token={token} setFullName={setFullName} />}
           />
 
           <Route path="*" element={<Navigate to="." replace />} />

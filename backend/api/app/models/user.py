@@ -5,9 +5,9 @@ class User(SQLModel, table=True):
     __tablename__ = "users"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    email: str
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    email: str = Field(index=True, unique=True)
+    first_name: str
+    last_name: str
     password: str
     is_active: bool = True
     is_superuser: bool = False

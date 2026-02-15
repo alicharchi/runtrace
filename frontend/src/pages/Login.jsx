@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Row, Col, Form, Button, Alert, Spinner } from "react-bootstrap";
-import { API_BASE } from "../config";
+import { login, fetchCurrentUser } from "../api";
 
 export default function Login({ setToken, setIsSuperUser }) {
   const [email, setEmail] = useState("");
@@ -25,46 +25,25 @@ export default function Login({ setToken, setIsSuperUser }) {
       return;
     }
 
-    const formData = new URLSearchParams();
-    formData.append("username", email);
-    formData.append("password", password);
-
     try {
       // Login
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: formData.toString(),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || "Login failed");
-      }
-
-      const data = await res.json();
-      const token = data.access_token;
-      if (!token) throw new Error("No token received");
+      const token = await login(email, password);
 
       // Save token & email
       setToken(token);
       localStorage.setItem("token", token);
       localStorage.setItem("email", email);
 
-      // Fetch current user info
-      const meRes = await fetch(`${API_BASE}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!meRes.ok) throw new Error("Failed to fetch user info");
+      // Fetch current user
+      const meData = await fetchCurrentUser(token);
 
-      const meData = await meRes.json();
       const superUser = meData.is_superuser === true;
+      const fullName = `${meData.first_name} ${meData.last_name}`;
 
-      // Update React state AND localStorage
-      setIsSuperUser(superUser); // ✅ important for immediate Navbar update
+      setIsSuperUser(superUser);
       localStorage.setItem("is_superuser", superUser ? "true" : "false");
-
-      // Navigate to dashboard
+      localStorage.setItem("fullName", fullName);
+     
       navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err.message);
