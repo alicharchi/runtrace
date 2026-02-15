@@ -4,20 +4,19 @@ import UserType from "./UserType";
 import { Button, Form, Modal, Spinner } from "react-bootstrap";
 
 export default function Users({ token }) {
-  // --- Hooks ---
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState("add"); // "add" or "edit"
+  const [modalMode, setModalMode] = useState("add");
   const [editingUserId, setEditingUserId] = useState(null);
 
   const [userForm, setUserForm] = useState({
     first_name: "",
     last_name: "",
     email: "",
-    password: "",
+    new_password: "",
     is_superuser: false,
   });
   const [modalLoading, setModalLoading] = useState(false);
@@ -82,8 +81,8 @@ export default function Users({ token }) {
     setModalLoading(true);
     setModalError("");
 
-    // Basic frontend validation
-    if (!userForm.first_name || !userForm.last_name || !userForm.email || (modalMode === "add" && !userForm.password)) {
+    // Validation
+    if (!userForm.first_name || !userForm.last_name || !userForm.email || (modalMode === "add" && !userForm.new_password)) {
       setModalError("All required fields must be filled");
       setModalLoading(false);
       return;
@@ -101,13 +100,14 @@ export default function Users({ token }) {
         setData((prev) => [...prev, addedUser]);
       } else if (modalMode === "edit") {
         const updatePayload = { ...userForm };
-        if (!updatePayload.password) delete updatePayload.password; // optional
+        if (!updatePayload.new_password) delete updatePayload.new_password; // optional
         updatePayload.is_superuser = updatePayload.is_superuser ? 1 : 0;
         const updatedUser = await updateUser(editingUserId, updatePayload, token);
         setData((prev) => prev.map((u) => (u.id === editingUserId ? updatedUser : u)));
       }
+
       setShowModal(false);
-      setUserForm({ first_name: "", last_name: "", email: "", password: "", is_superuser: false });
+      setUserForm({ first_name: "", last_name: "", email: "", new_password: "", is_superuser: false });
       setEditingUserId(null);
     } catch (err) {
       setModalError(err.message);
@@ -127,21 +127,20 @@ export default function Users({ token }) {
     }
   };
 
-  // --- Open modal for add or edit ---
+  // --- Open modal ---
   const openAddModal = () => {
     setModalMode("add");
-    setUserForm({ first_name: "", last_name: "", email: "", password: "", is_superuser: false });
+    setUserForm({ first_name: "", last_name: "", email: "", new_password: "", is_superuser: false });
     setShowModal(true);
   };
 
   const openEditModal = (user) => {
     setModalMode("edit");
     setEditingUserId(user.id);
-    setUserForm({ ...user, password: "" }); // password is optional
+    setUserForm({ ...user, new_password: "" }); // new_password optional
     setShowModal(true);
   };
 
-  // --- Early render messages ---
   if (!token) return <p>Please login to see user data.</p>;
   if (loading) return <p>Loading data...</p>;
   if (error) return <p>Error: {error.message}</p>;
@@ -213,7 +212,7 @@ export default function Users({ token }) {
             </Form.Group>
             <Form.Group className="mb-2">
               <Form.Label>Password {modalMode === "edit" && "(leave blank to keep current)"}</Form.Label>
-              <Form.Control name="password" type="password" value={userForm.password} onChange={handleModalChange} />
+              <Form.Control name="new_password" type="password" value={userForm.new_password} onChange={handleModalChange} />
             </Form.Group>
             <Form.Group className="mb-2">
               <Form.Check type="checkbox" label="Superuser" name="is_superuser" checked={userForm.is_superuser} onChange={handleModalChange} />

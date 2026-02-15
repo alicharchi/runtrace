@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
-from typing import List
+from typing import List,Optional
 
 from app.models.user import User
 from app.schemas.user import UserCreate, UserPublic, UserUpdate, UserDeletedResponse
@@ -11,6 +11,7 @@ from app.utils.auth import (
     hash_password
 )
 from pydantic import BaseModel, EmailStr
+from app.utils.auth import hash_password, verify_password
 
 router = APIRouter(
     prefix="/users",
@@ -67,25 +68,32 @@ def get_user(
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
-
 @router.patch("/{user_id}", response_model=UserPublic)
 def update_user(
     user_id: int,
     user_update: UserUpdate,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     db_user = session.get(User, user_id)
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
+    # Authorization
     if db_user.id != current_user.id and not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Not authorized to update this user")
+        raise HTTPException(status_code=403, detail="Not authorized")
 
-    update_data = user_update.dict(exclude_unset=True)
-    if "password" in update_data:
-        update_data["password"] = hash_password(update_data["password"])
+    # Password change
+    if user_update.new_password:
+        if not current_user.is_superuser:
+            if not user_update.old_password:
+                raise HTTPException(status_code=400, detail="Current password required")
+            if not verify_password(user_update.old_password, db_user.password):
+                raise HTTPException(status_code=400, detail="Current password is incorrect")
+        db_user.password = hash_password(user_update.new_password)
 
+    # Update other fields
+    update_data = user_update.dict(exclude_unset=True, exclude={"old_password", "new_password"})
     for key, value in update_data.items():
         setattr(db_user, key, value)
 
@@ -93,7 +101,6 @@ def update_user(
     session.commit()
     session.refresh(db_user)
     return db_user
-
 
 @router.put("/{user_id}", response_model=UserPublic)
 def replace_user(

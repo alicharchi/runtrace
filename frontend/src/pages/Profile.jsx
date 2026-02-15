@@ -1,19 +1,26 @@
 import { useEffect, useState } from "react";
-import { Card, Form, Button, Alert, Spinner } from "react-bootstrap";
+import { Card, Form, Button, Alert, Spinner, InputGroup } from "react-bootstrap";
 import { fetchCurrentUser, updateUser } from "../api";
 
-export default function CurrentUserProfile({ token , setFullName }) {
+export default function CurrentUserProfile({ token, setFullName }) {
   const [meData, setMeData] = useState(null);
+
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
     email: "",
+    old_password: "",
+    new_password: "",
   });
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  const [changePassword, setChangePassword] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -26,6 +33,8 @@ export default function CurrentUserProfile({ token , setFullName }) {
           first_name: data.first_name || "",
           last_name: data.last_name || "",
           email: data.email || "",
+          old_password: "",
+          new_password: "",
         });
       } catch (err) {
         setError(err.message);
@@ -49,24 +58,40 @@ export default function CurrentUserProfile({ token , setFullName }) {
     setSaving(true);
 
     try {
-      if (!meData || !meData.id) throw new Error("User ID not available");
+      if (!meData?.id) throw new Error("User ID not available");
 
-      await updateUser(meData.id, {
+      if (changePassword) {
+        if (!formData.old_password) {
+          throw new Error("Current password is required");
+        }
+        if (!formData.new_password || formData.new_password.length < 8) {
+          throw new Error("New password must be at least 8 characters");
+        }
+      }
+
+      const updatePayload = {
         first_name: formData.first_name,
         last_name: formData.last_name,
-      }, token);
+      };
 
-      setMeData((prev) => ({
-        ...prev,
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-      }));
+      if (changePassword) {
+        updatePayload.old_password = formData.old_password;
+        updatePayload.new_password = formData.new_password;
+      }
+
+      await updateUser(meData.id, updatePayload, token);
 
       const fullName = `${formData.first_name} ${formData.last_name}`;
       localStorage.setItem("fullName", fullName);
-
       if (setFullName) setFullName(fullName);
 
+      setFormData((prev) => ({
+        ...prev,
+        old_password: "",
+        new_password: "",
+      }));
+
+      setChangePassword(false);
       setSuccess("Profile updated successfully.");
     } catch (err) {
       setError(err.message || "Failed to update profile");
@@ -94,17 +119,13 @@ export default function CurrentUserProfile({ token , setFullName }) {
         {success && <Alert variant="success">{success}</Alert>}
 
         <Form onSubmit={handleSubmit}>
-
+          {/* Email */}
           <Form.Group className="mb-4">
             <Form.Label>Email</Form.Label>
-            <Form.Control
-              value={formData.email}
-              disabled
-              plaintext
-              readOnly
-            />
+            <Form.Control plaintext readOnly value={formData.email} />
           </Form.Group>
 
+          {/* First Name */}
           <Form.Group className="mb-3">
             <Form.Label>First Name</Form.Label>
             <Form.Control
@@ -115,7 +136,8 @@ export default function CurrentUserProfile({ token , setFullName }) {
             />
           </Form.Group>
 
-          <Form.Group className="mb-3">
+          {/* Last Name */}
+          <Form.Group className="mb-4">
             <Form.Label>Last Name</Form.Label>
             <Form.Control
               name="last_name"
@@ -125,6 +147,77 @@ export default function CurrentUserProfile({ token , setFullName }) {
             />
           </Form.Group>
 
+          {/* Password Section */}
+          <hr />
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h6 className="text-muted mb-0">Password</h6>
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              disabled={saving}
+              onClick={() => {
+                setChangePassword((prev) => !prev);
+                setFormData((prev) => ({
+                  ...prev,
+                  old_password: "",
+                  new_password: "",
+                }));
+              }}
+            >
+              {changePassword ? "Cancel" : "Change Password"}
+            </Button>
+          </div>
+
+          {changePassword && (
+            <>
+              {/* Old Password */}
+              <Form.Group className="mb-3">
+                <Form.Label>Current Password</Form.Label>
+                <InputGroup>
+                  <Form.Control
+                    type={showOldPassword ? "text" : "password"}
+                    name="old_password"
+                    value={formData.old_password}
+                    onChange={handleChange}
+                    disabled={saving}
+                    autoComplete="current-password"
+                  />
+                  <Button
+                    variant="outline-secondary"
+                    onClick={() => setShowOldPassword((v) => !v)}
+                  >
+                    {showOldPassword ? "Hide" : "Show"}
+                  </Button>
+                </InputGroup>
+              </Form.Group>
+
+              {/* New Password */}
+              <Form.Group className="mb-4">
+                <Form.Label>New Password</Form.Label>
+                <InputGroup>
+                  <Form.Control
+                    type={showNewPassword ? "text" : "password"}
+                    name="new_password"
+                    value={formData.new_password}
+                    onChange={handleChange}
+                    disabled={saving}
+                    autoComplete="new-password"
+                  />
+                  <Button
+                    variant="outline-secondary"
+                    onClick={() => setShowNewPassword((v) => !v)}
+                  >
+                    {showNewPassword ? "Hide" : "Show"}
+                  </Button>
+                </InputGroup>
+                <Form.Text className="text-muted">
+                  Minimum 8 characters
+                </Form.Text>
+              </Form.Group>
+            </>
+          )}
+
+          {/* Submit */}
           <Button
             type="submit"
             variant="primary"

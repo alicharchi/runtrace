@@ -19,13 +19,15 @@ class UserPublic(BaseModel):
     is_superuser: bool
     email_verified: bool
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 class UserUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    password: Optional[str] = None
+    old_password: Optional[str] = None
+    new_password: Optional[str] = None
     is_active: Optional[bool] = None
     is_superuser: Optional[bool] = None
     email_verified: Optional[bool] = None
