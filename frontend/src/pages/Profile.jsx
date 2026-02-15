@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, Form, Button, Alert, Spinner } from "react-bootstrap";
 import { fetchCurrentUser, updateUser } from "../api";
 
-export default function CurrentUserProfile({ token }) {
+export default function CurrentUserProfile({ token , setFullName }) {
   const [meData, setMeData] = useState(null);
   const [formData, setFormData] = useState({
     first_name: "",
@@ -64,6 +64,8 @@ export default function CurrentUserProfile({ token }) {
 
       const fullName = `${formData.first_name} ${formData.last_name}`;
       localStorage.setItem("fullName", fullName);
+
+      if (setFullName) setFullName(fullName);
 
       setSuccess("Profile updated successfully.");
     } catch (err) {

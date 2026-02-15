@@ -1,3 +1,4 @@
+import { useState} from "react";
 import { Container } from "react-bootstrap";
 import { Routes, Route, Navigate } from "react-router-dom";
 import AppNavbar from "../components/Navbar";
@@ -8,7 +9,7 @@ import Welcome from "./Welcome";
 import CurrentUserProfile from "./Profile";
 
 export default function Dashboard({ token, setToken, isSuperUser }) {  
-  const fullName = localStorage.getItem("fullName");
+  const [fullName, setFullName] = useState(localStorage.getItem("fullName") || "");
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -41,7 +42,7 @@ export default function Dashboard({ token, setToken, isSuperUser }) {
             }
           />
 
-          <Route path="profile" element={<CurrentUserProfile token={token}/>} />
+          <Route path="profile" element={<CurrentUserProfile token={token} setFullName={setFullName}/>} />
 
           <Route path="*" element={<Navigate to="." replace />} />
         </Routes>
