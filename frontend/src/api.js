@@ -9,6 +9,18 @@ async function fetchWithToken(url, token, options = {}, fallback = {}) {
       Authorization: `Bearer ${token}`,
     },
   });
+  
+  if (res.status === 401 || res.status === 403) {
+    console.warn("Auth error — logging out");
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("email");
+    localStorage.removeItem("is_superuser");
+    localStorage.removeItem("fullName");
+    
+    window.location.replace("/login");
+    return; 
+  }
 
   if (!res.ok) {
     let text;
@@ -17,7 +29,6 @@ async function fetchWithToken(url, token, options = {}, fallback = {}) {
     } catch {
       text = "";
     }
-    console.error(`API request failed. Response: ${text}`);
     throw new Error(text || "API request failed");
   }
 

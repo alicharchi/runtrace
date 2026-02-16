@@ -1,8 +1,8 @@
-// App.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import ProtectedRoute from "./components/ProtectedRoute"
 import { fetchCurrentUser } from "./api";
 
 export default function App() {
@@ -18,33 +18,26 @@ export default function App() {
       setLoading(false);
       return;
     }
-    
-    if (localStorage.getItem("is_superuser") === null || !fullName) {
-      fetchCurrentUser(token)
-        .then((data) => {
-          const superUser = data.is_superuser === true;
-          const name = `${data.first_name} ${data.last_name}`;
 
-          setIsSuperUser(superUser);
-          setFullName(name);
+    fetchCurrentUser(token)
+      .then((data) => {
+        const superUser = data.is_superuser === true;
+        const name = `${data.first_name} ${data.last_name}`;
 
-          localStorage.setItem("is_superuser", superUser ? "true" : "false");
-          localStorage.setItem("fullName", name);
-        })
-        .catch((err) => {
-          console.error(err);
-          localStorage.removeItem("token");
-          localStorage.removeItem("email");
-          localStorage.removeItem("is_superuser");
-          localStorage.removeItem("fullName");
-          setToken(null);
-          setIsSuperUser(false);
-          setFullName("");
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+        setIsSuperUser(superUser);
+        setFullName(name);
+
+        localStorage.setItem("is_superuser", superUser ? "true" : "false");
+        localStorage.setItem("fullName", name);
+      })
+      .catch((err) => {
+        console.error("Token invalid or expired:", err);
+        localStorage.clear();
+        setToken(null);
+        setIsSuperUser(false);
+        setFullName("");
+      })
+      .finally(() => setLoading(false));
   }, [token]);
 
   if (loading) return <div className="text-center mt-5">Loading...</div>;
@@ -77,7 +70,7 @@ export default function App() {
       <Route
         path="/dashboard/*"
         element={
-          token ? (
+          <ProtectedRoute token={token}>
             <Dashboard
               token={token}
               setToken={setToken}
@@ -85,9 +78,7 @@ export default function App() {
               fullName={fullName}
               setFullName={setFullName}
             />
-          ) : (
-            <Navigate to="/login" replace />
-          )
+          </ProtectedRoute>
         }
       />
 
