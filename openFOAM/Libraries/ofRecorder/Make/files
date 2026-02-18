@@ -1,0 +1,4 @@
+DataLogger/DataLogger.C
+CaseInfo/foamCaseInfo.C
+
+LIB = $(FOAM_USER_LIBBIN)/libDataLogger
