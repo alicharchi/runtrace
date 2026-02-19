@@ -26,8 +26,8 @@ class UserPublic(BaseModel):
 class UserUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    password: Optional[str] = None
     old_password: Optional[str] = None
-    new_password: Optional[str] = None
     is_active: Optional[bool] = None
     is_superuser: Optional[bool] = None
     email_verified: Optional[bool] = None

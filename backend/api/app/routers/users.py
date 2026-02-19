@@ -84,16 +84,16 @@ def update_user(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     # Password change
-    if user_update.new_password:
+    if user_update.password:
         if not current_user.is_superuser:
             if not user_update.old_password:
                 raise HTTPException(status_code=400, detail="Current password required")
             if not verify_password(user_update.old_password, db_user.password):
                 raise HTTPException(status_code=400, detail="Current password is incorrect")
-        db_user.password = hash_password(user_update.new_password)
+        db_user.password = hash_password(user_update.password)
 
     # Update other fields
-    update_data = user_update.dict(exclude_unset=True, exclude={"old_password", "new_password"})
+    update_data = user_update.dict(exclude_unset=True, exclude={"old_password", "password"})
     for key, value in update_data.items():
         setattr(db_user, key, value)
 

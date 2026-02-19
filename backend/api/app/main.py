@@ -8,18 +8,26 @@ from app.models.user import User
 from app.utils.auth import hash_password
 from app.routers import runs, events, runinfo, parameters, login, health, users
 
-
 def create_app() -> FastAPI:
     app = FastAPI(title="Run Logging API")
 
+    # ------------------- CORS -------------------
+    origins = CONFIG.ALLOWED_ORIGINS
+    # Must include full React origin including port
+    if "http://localhost:5173" not in origins:
+        origins.append("http://localhost:5173")
+    if "http://127.0.0.1:5173" not in origins:
+        origins.append("http://127.0.0.1:5173")
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=CONFIG.ALLOWED_ORIGINS,
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
+    # ------------------- Routers -------------------
     app.include_router(health.router)
     app.include_router(runs.router)
     app.include_router(events.router)
@@ -33,7 +41,7 @@ def create_app() -> FastAPI:
 
 app = create_app()
 
-
+# ------------------- Startup Event -------------------
 @app.on_event("startup")
 def on_startup():
     init_db()

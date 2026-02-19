@@ -6,9 +6,10 @@ import RunsTable from "../components/RunsTable";
 import PlotArea from "../components/PlotArea";
 import RunParameterSelector from "../components/RunParameterSelector";
 import BottomControls from "../components/BottomControls";
-import RunInfo from "../components/RuniInfo";
+import RunInfo from "../components/RunInfo";
 
 import { fetchPlotData, fetchRuns } from "../api";
+import { API_BASE } from "../config";
 
 const PANEL_WIDTH_KEY = "runsPanelWidth";
 const PANEL_VISIBLE_KEY = "runsPanelVisible";
@@ -19,17 +20,15 @@ const loadPanelWidth = () => {
 };
 
 export default function Runs({ token }) {
-  /* ---------------- routing ---------------- */
   const { runId: runIdParam } = useParams();
   const navigate = useNavigate();
 
-  /* ---------------- state ---------------- */
-  const [runs, setRuns] = useState([]);
-  const [runId, setRunId] = useState(
-    runIdParam ? Number(runIdParam) : null
-  );
-  const [parameter, setParameter] = useState(null);
+  const containerRef = useRef(null);
 
+  // ------------------- State -------------------
+  const [runs, setRuns] = useState([]);
+  const [runId, setRunId] = useState(runIdParam ? Number(runIdParam) : null);
+  const [parameter, setParameter] = useState(null);
   const [plotData, setPlotData] = useState([]);
   const [plotLoading, setPlotLoading] = useState(false);
 
@@ -42,14 +41,10 @@ export default function Runs({ token }) {
     JSON.parse(localStorage.getItem(PANEL_VISIBLE_KEY) ?? "true")
   );
 
-  const containerRef = useRef(null);
-  const headerRef = useRef(null);
-  const [headerBottom, setHeaderBottom] = useState(0);
-
   const [loadingRuns, setLoadingRuns] = useState(true);
   const [runsError, setRunsError] = useState("");
 
-  /* ---------------- fetch runs ---------------- */
+  // ------------------- Load Runs -------------------
   const loadRuns = useCallback(async () => {
     if (!token) return;
     setLoadingRuns(true);
@@ -70,52 +65,85 @@ export default function Runs({ token }) {
     loadRuns();
   }, [loadRuns]);
 
-  /* ---------------- URL → state sync ---------------- */
+  // ------------------- SSE for real-time run updates -------------------
+  useEffect(() => {
+    if (!token) return;
+    const sseUrl = `${API_BASE}/runs/stream?token=${token}`;
+    const eventSource = new EventSource(sseUrl);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        setRuns((prevRuns) => {
+          const idx = prevRuns.findIndex((r) => r.id === data.run_id);
+          if (idx >= 0) {
+            const updated = [...prevRuns];
+            updated[idx] = { ...updated[idx], ...data };
+            return updated;
+          } else if (data.type === "run_started") {
+            return [...prevRuns, {
+              id: data.run_id,
+              status: data.status,
+              time: data.time,
+              exitflag: null,
+              endtime: null,
+              user_id: null,
+              user_email: null,
+              user_first_name: null,
+              user_last_name: null,
+            }];
+          }
+          return prevRuns;
+        });
+      } catch (err) {
+        console.error("SSE parse error", err);
+      }
+    };
+
+    eventSource.onerror = () => {
+      console.warn("SSE connection lost, retrying...");
+      eventSource.close();
+      setTimeout(() => {
+        setRuns((prev) => [...prev]);
+      }, 3000);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [token]);
+
+  // ------------------- URL → state sync -------------------
   useEffect(() => {
     if (runIdParam) {
       const id = Number(runIdParam);
-      if (!Number.isNaN(id)) {
-        setRunId(id);
-      }
+      if (!Number.isNaN(id)) setRunId(id);
     }
   }, [runIdParam]);
 
-  /* ---------------- auto-select first run (no URL override) ---------------- */
+  // ------------------- Auto-select first run -------------------
   useEffect(() => {
-    if (
-      !loadingRuns &&
-      runs.length > 0 &&
-      runId === null &&
-      !runIdParam
-    ) {
+    if (!loadingRuns && runs.length > 0 && runId === null && !runIdParam) {
       const id = runs[0].id;
       setRunId(id);
       navigate(`/dashboard/runs/${id}`, { replace: true });
     }
   }, [loadingRuns, runs, runId, runIdParam, navigate]);
 
-  /* ---------------- layout helpers ---------------- */
-  useEffect(() => {
-    if (headerRef.current) {
-      const rect = headerRef.current.getBoundingClientRect();
-      setHeaderBottom(rect.bottom);
-    }
-  }, []);
-
+  // ------------------- Panel visibility persistence -------------------
   useEffect(() => {
     localStorage.setItem(PANEL_VISIBLE_KEY, JSON.stringify(leftVisible));
   }, [leftVisible]);
 
-  /* ---------------- reset plot when run changes ---------------- */
+  // ------------------- Plot reset when run changes -------------------
   useEffect(() => {
     setParameter(null);
     setPlotData([]);
   }, [runId]);
 
-  /* ---------------- fetch plot ---------------- */
+  // ------------------- Fetch plot data -------------------
   const fetchAndSet = useCallback(async () => {
     if (!runId || !parameter) return;
-
     setPlotLoading(true);
     try {
       const points = await fetchPlotData(runId, parameter, token);
@@ -129,21 +157,17 @@ export default function Runs({ token }) {
     }
   }, [runId, parameter, token]);
 
-  /* ---------------- fetch once on run/parameter change ---------------- */
   useEffect(() => {
     if (!runId || !parameter) return;
     fetchAndSet();
   }, [runId, parameter, fetchAndSet]);
 
-  /* ---------------- auto-refresh logic ---------------- */
   useEffect(() => {
     if (!runId || !parameter || refreshSec === 0) return;
-
     let cancelled = false;
     const wrappedFetch = async () => {
       if (!cancelled) await fetchAndSet();
     };
-
     wrappedFetch();
     const intervalId = setInterval(wrappedFetch, refreshSec * 1000);
     return () => {
@@ -152,63 +176,36 @@ export default function Runs({ token }) {
     };
   }, [fetchAndSet, refreshSec, runId, parameter]);
 
-  /* ---------------- resize logic ---------------- */
+  // ------------------- Resizer -------------------
   useEffect(() => {
     const handleMouseMove = (e) => {
-      if (!isResizing) return;
+      if (!isResizing || !containerRef.current) return;
       const containerLeft = containerRef.current.getBoundingClientRect().left;
       const newWidth = e.clientX - containerLeft;
-      if (newWidth > 200 && newWidth < 800) setLeftWidth(newWidth);
+      if (newWidth > 200 && newWidth < window.innerWidth - 200) {
+        setLeftWidth(newWidth);
+      }
     };
 
     const handleMouseUp = () => {
-      if (!isResizing) return;
-      localStorage.setItem(PANEL_WIDTH_KEY, leftWidth);
-      setIsResizing(false);
+      if (isResizing) {
+        setIsResizing(false);
+        localStorage.setItem(PANEL_WIDTH_KEY, leftWidth);
+      }
     };
 
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
+
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isResizing, leftWidth]);
 
-  const isLoading = plotLoading && !!parameter;
-
-  /* ---------------- render ---------------- */
+  // ------------------- Render -------------------
   return (
     <Container fluid className="p-3" ref={containerRef}>
-      <div ref={headerRef} />
-
-      {!leftVisible && (
-        <div
-          style={{
-            position: "fixed",
-            top: headerBottom + 10,
-            left: 0,
-            zIndex: 1100,
-          }}
-        >
-          <Button
-            variant="secondary"
-            size="sm"
-            title="Show Runs Panel"
-            style={{
-              borderTopLeftRadius: 0,
-              borderBottomLeftRadius: 0,
-              borderTopRightRadius: 8,
-              borderBottomRightRadius: 8,
-              padding: "6px 10px",
-            }}
-            onClick={() => setLeftVisible(true)}
-          >
-            ☰
-          </Button>
-        </div>
-      )}
-
       <div style={{ display: "flex", height: "calc(100vh - 120px)" }}>
         {/* Left Panel */}
         <div
@@ -218,7 +215,7 @@ export default function Runs({ token }) {
             borderRight: leftVisible ? "2px solid #ccc" : "none",
             overflowY: "auto",
             position: "relative",
-            transition: "width 0.3s ease",
+            transition: "width 0.2s ease",
           }}
         >
           {leftVisible && (
@@ -283,11 +280,7 @@ export default function Runs({ token }) {
               />
             </div>
 
-            <PlotArea
-              plotData={plotData}
-              parameter={parameter}
-              loading={isLoading}
-            />
+            <PlotArea plotData={plotData} parameter={parameter} loading={plotLoading} />
 
             <div
               style={{
@@ -303,25 +296,13 @@ export default function Runs({ token }) {
         )}
       </div>
 
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          width: "100%",
-          zIndex: 1000,
-          padding: "0px 20px 10px",
-          backgroundColor: "white",
-          boxShadow: "0 -2px 5px rgba(0,0,0,0.1)",
-        }}
-      >
-        <BottomControls
-          refreshSec={refreshSec}
-          setRefreshSec={setRefreshSec}
-          lastRefresh={lastRefresh}
-          onManualRefresh={fetchAndSet}
-        />
-      </div>
+      {/* Bottom controls */}
+      <BottomControls
+        refreshSec={refreshSec}
+        setRefreshSec={setRefreshSec}
+        lastRefresh={lastRefresh}
+        onManualRefresh={fetchAndSet}
+      />
     </Container>
   );
 }
