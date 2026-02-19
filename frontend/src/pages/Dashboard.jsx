@@ -8,14 +8,19 @@ import RequireSuperUser from "../components/RequireSuperUser";
 import Welcome from "./Welcome";
 import CurrentUserProfile from "./Profile";
 
-export default function Dashboard({ token, setToken, isSuperUser,fullName, setFullName }) {  
-  
+export default function Dashboard({
+  token,
+  setToken,
+  isSuperUser,
+  fullName,
+  setFullName,
+}) {
   useEffect(() => {
     if (token) {
       const storedName = localStorage.getItem("fullName") || "";
       setFullName(storedName);
     }
-  }, [token]);
+  }, [token, setFullName]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -38,7 +43,11 @@ export default function Dashboard({ token, setToken, isSuperUser,fullName, setFu
       <Container fluid className="mt-3">
         <Routes>
           <Route index element={<Welcome />} />
-          <Route path="runs" element={<Runs token={token} />} />
+          
+          <Route path="runs">
+            <Route index element={<Runs token={token} />} />
+            <Route path=":runId" element={<Runs token={token} />} />
+          </Route>
 
           <Route
             path="users"
@@ -51,7 +60,12 @@ export default function Dashboard({ token, setToken, isSuperUser,fullName, setFu
 
           <Route
             path="profile"
-            element={<CurrentUserProfile token={token} setFullName={setFullName} />}
+            element={
+              <CurrentUserProfile
+                token={token}
+                setFullName={setFullName}
+              />
+            }
           />
 
           <Route path="*" element={<Navigate to="." replace />} />

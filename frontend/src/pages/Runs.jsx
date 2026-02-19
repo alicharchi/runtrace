@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Container, Button, Spinner, Alert } from "react-bootstrap";
+import { useParams, useNavigate } from "react-router-dom";
+
 import RunsTable from "../components/RunsTable";
 import PlotArea from "../components/PlotArea";
 import RunParameterSelector from "../components/RunParameterSelector";
@@ -17,8 +19,15 @@ const loadPanelWidth = () => {
 };
 
 export default function Runs({ token }) {
+  /* ---------------- routing ---------------- */
+  const { runId: runIdParam } = useParams();
+  const navigate = useNavigate();
+
+  /* ---------------- state ---------------- */
   const [runs, setRuns] = useState([]);
-  const [runId, setRunId] = useState(null);
+  const [runId, setRunId] = useState(
+    runIdParam ? Number(runIdParam) : null
+  );
   const [parameter, setParameter] = useState(null);
 
   const [plotData, setPlotData] = useState([]);
@@ -61,12 +70,29 @@ export default function Runs({ token }) {
     loadRuns();
   }, [loadRuns]);
 
-  /* ---------------- auto-select first run ---------------- */
+  /* ---------------- URL → state sync ---------------- */
   useEffect(() => {
-    if (!loadingRuns && runs.length > 0 && runId === null) {
-      setRunId(runs[0].id);
+    if (runIdParam) {
+      const id = Number(runIdParam);
+      if (!Number.isNaN(id)) {
+        setRunId(id);
+      }
     }
-  }, [loadingRuns, runs, runId]);
+  }, [runIdParam]);
+
+  /* ---------------- auto-select first run (no URL override) ---------------- */
+  useEffect(() => {
+    if (
+      !loadingRuns &&
+      runs.length > 0 &&
+      runId === null &&
+      !runIdParam
+    ) {
+      const id = runs[0].id;
+      setRunId(id);
+      navigate(`/dashboard/runs/${id}`, { replace: true });
+    }
+  }, [loadingRuns, runs, runId, runIdParam, navigate]);
 
   /* ---------------- layout helpers ---------------- */
   useEffect(() => {
@@ -219,7 +245,10 @@ export default function Runs({ token }) {
                 <RunsTable
                   runs={runs}
                   selectedRunId={runId}
-                  onSelectRun={setRunId}
+                  onSelectRun={(id) => {
+                    setRunId(id);
+                    navigate(`/dashboard/runs/${id}`);
+                  }}
                 />
               )}
             </>
@@ -245,7 +274,6 @@ export default function Runs({ token }) {
               overflow: "hidden",
             }}
           >
-            {/* RunParameterSelector with margin-bottom */}
             <div style={{ marginBottom: "1rem" }}>
               <RunParameterSelector
                 selectedRunId={runId}
@@ -255,14 +283,12 @@ export default function Runs({ token }) {
               />
             </div>
 
-            {/* PlotArea */}
             <PlotArea
               plotData={plotData}
               parameter={parameter}
               loading={isLoading}
             />
 
-            {/* Scrollable RunInfo */}
             <div
               style={{
                 flex: 1,
@@ -277,7 +303,6 @@ export default function Runs({ token }) {
         )}
       </div>
 
-      {/* Sticky BottomControls */}
       <div
         style={{
           position: "fixed",
