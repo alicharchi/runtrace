@@ -25,7 +25,7 @@ def renderHtmlBody(run_id:int, status:str,end_time:str):
         run_id=run_id,
         exit_flag=status,
         end_time = end_time,
-        run_url="http://localhost:5173",
+        run_url=f"http://localhost:5173/dashboard/runs/{run_id}",
         header_color=colors["header_color"],
         status_color=colors["status_color"],
     )
