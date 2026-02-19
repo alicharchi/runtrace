@@ -42,7 +42,7 @@ export default function RunsTable({
                 <td>{run.id}</td>
                 <td><RunStatus status={run.status} /></td>
                 <td>{run.exitflag}</td>
-                <td>{run.user_id}</td>
+                <td>{run.user_first_name} {run.user_last_name}</td>
                 <td>{formatDateTime(run.time)}</td>
                 <td>{formatDateTime(run.endtime)}</td>
                 <td>{calculateDuration(run.time, run.endtime)}</td>

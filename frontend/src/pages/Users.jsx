@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { fetchUsers, addUser, deleteUser, updateUser } from "../api";
-import UserType from "./UserType";
+import UserType from "../components/UserType";
 import { Button, Form, Modal, Spinner } from "react-bootstrap";
 
 export default function Users({ token }) {
