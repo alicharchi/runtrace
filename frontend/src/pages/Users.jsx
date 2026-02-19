@@ -16,7 +16,7 @@ export default function Users({ token }) {
     first_name: "",
     last_name: "",
     email: "",
-    new_password: "",
+    password: "",
     is_superuser: false,
   });
   const [modalLoading, setModalLoading] = useState(false);
@@ -82,7 +82,7 @@ export default function Users({ token }) {
     setModalError("");
 
     // Validation
-    if (!userForm.first_name || !userForm.last_name || !userForm.email || (modalMode === "add" && !userForm.new_password)) {
+    if (!userForm.first_name || !userForm.last_name || !userForm.email || (modalMode === "add" && !userForm.password)) {
       setModalError("All required fields must be filled");
       setModalLoading(false);
       return;
@@ -100,14 +100,14 @@ export default function Users({ token }) {
         setData((prev) => [...prev, addedUser]);
       } else if (modalMode === "edit") {
         const updatePayload = { ...userForm };
-        if (!updatePayload.new_password) delete updatePayload.new_password; // optional
+        if (!updatePayload.password) delete updatePayload.password;
         updatePayload.is_superuser = updatePayload.is_superuser ? 1 : 0;
         const updatedUser = await updateUser(editingUserId, updatePayload, token);
         setData((prev) => prev.map((u) => (u.id === editingUserId ? updatedUser : u)));
       }
 
       setShowModal(false);
-      setUserForm({ first_name: "", last_name: "", email: "", new_password: "", is_superuser: false });
+      setUserForm({ first_name: "", last_name: "", email: "", password: "", is_superuser: false });
       setEditingUserId(null);
     } catch (err) {
       setModalError(err.message);
@@ -130,14 +130,14 @@ export default function Users({ token }) {
   // --- Open modal ---
   const openAddModal = () => {
     setModalMode("add");
-    setUserForm({ first_name: "", last_name: "", email: "", new_password: "", is_superuser: false });
+    setUserForm({ first_name: "", last_name: "", email: "", password: "", is_superuser: false });
     setShowModal(true);
   };
 
   const openEditModal = (user) => {
     setModalMode("edit");
     setEditingUserId(user.id);
-    setUserForm({ ...user, new_password: "" }); // new_password optional
+    setUserForm({ ...user, password: "" }); 
     setShowModal(true);
   };
 
@@ -212,7 +212,7 @@ export default function Users({ token }) {
             </Form.Group>
             <Form.Group className="mb-2">
               <Form.Label>Password {modalMode === "edit" && "(leave blank to keep current)"}</Form.Label>
-              <Form.Control name="new_password" type="password" value={userForm.new_password} onChange={handleModalChange} />
+              <Form.Control name="password" type="password" value={userForm.password} onChange={handleModalChange} />
             </Form.Group>
             <Form.Group className="mb-2">
               <Form.Check type="checkbox" label="Superuser" name="is_superuser" checked={userForm.is_superuser} onChange={handleModalChange} />
