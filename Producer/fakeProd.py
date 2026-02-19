@@ -23,7 +23,7 @@ def submitRunHeader(manager:RunManager):
         print(f"  {info['property']}: [{info['value']}]")
 
 Base_URL = "http://localhost:8001"
-userName,Password = "user@test.com","test!123"
+userName,Password = "user@test.com","test!12345678"
 Kafka_Broker = "localhost:9092"
 
 parser = argparse.ArgumentParser()

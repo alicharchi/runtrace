@@ -9,15 +9,24 @@ export const COLORS = [
 
 export function formatDateTime(isoString) {
   if (!isoString) return "";
+  
+  const normalized = isoString.replace(
+    /\.(\d{3})\d*/,
+    ".$1"
+  );
+  
+  const utcString = normalized.endsWith("Z")
+    ? normalized
+    : `${normalized}Z`;
 
-  return new Date(isoString).toLocaleString(undefined, {
+  return new Date(utcString).toLocaleString(undefined, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-    hour: "2-digit",
+    hour: "numeric",
     minute: "2-digit",
     second: "2-digit",
-    hour12: false,
+    hour12: true,
   });
 }
 
