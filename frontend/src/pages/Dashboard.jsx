@@ -3,7 +3,7 @@ import { Container } from "react-bootstrap";
 import { Routes, Route, Navigate } from "react-router-dom";
 import AppNavbar from "../components/Navbar";
 import Runs from "./Runs";
-import Users from "../components/Users";
+import Users from "./Users";
 import RequireSuperUser from "../components/RequireSuperUser";
 import Welcome from "./Welcome";
 import CurrentUserProfile from "./Profile";

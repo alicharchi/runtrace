@@ -2,6 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from datetime import datetime, timezone
+from sqlalchemy.orm import selectinload
 
 from app.utils.auth import get_current_user
 from app.database import get_session
@@ -28,15 +29,31 @@ def create_run(
     return db_run
 
 @router.get("/", response_model=List[RunsRead])
-def get_runs(session: Session = Depends(get_session),
-    current_user = Depends(get_current_user)):
+def get_runs(
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user),
+):
+    stmt = select(Runs).options(selectinload(Runs.user))
 
-    if current_user.is_superuser:
-        stmt = select(Runs)
-    else:
-        stmt = select(Runs).where(Runs.user_id == current_user.id)
-            
-    return session.exec(stmt).all()
+    if not current_user.is_superuser:
+        stmt = stmt.where(Runs.user_id == current_user.id)
+
+    runs = session.exec(stmt).all()
+    
+    return [
+        RunsRead(
+            id=run.id,
+            user_id=run.user_id,
+            user_email=run.user.email if run.user else None,
+            user_first_name=run.user.first_name if run.user else None,
+            user_last_name=run.user.last_name if run.user else None,
+            time=run.time,
+            status=run.status,
+            exitflag=run.exitflag,
+            endtime=run.endtime,
+        )
+        for run in runs
+    ]
 
 @router.put("/{run_id}/ended", response_model=Runs)
 def run_ended(
