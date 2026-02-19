@@ -1,8 +1,6 @@
 # Runtrace
 
-Runtrace is a lightweight **simulation run tracking system** for monitoring, managing, and coordinating computational runs. It was initially designed for monitoring OpenFOAM runs but can be used in any scientific or engineering workflow where run state, metadata, and lifecycle tracking are essential.
-
----
+Runtrace is a **lightweight simulation run tracking** system that leverages Apache Kafka event streaming for scalable, high-throughput logging and lifecycle tracking. Originally built for OpenFOAM simulations, it supports general scientific and engineering workflows and provides email notifications on run completion and status updates.
 
 ## Features
 
@@ -11,8 +9,6 @@ Runtrace is a lightweight **simulation run tracking system** for monitoring, man
 - Asynchronous consumers and notifiers
 - Database-backed persistence
 - Docker Compose–based local setup
-
----
 
 ## Structure
 
@@ -26,8 +22,6 @@ Runtrace is a lightweight **simulation run tracking system** for monitoring, man
 - **producer**: Sample event producers (Python)
 - **openfoam**: OpenFOAM data collection libraries and examples (C++)
 
----
-
 ## Tools and Libraries Used
 
 - [Apache Kafka](https://kafka.apache.org/)
@@ -37,6 +31,7 @@ Runtrace is a lightweight **simulation run tracking system** for monitoring, man
 - [Docker](https://www.docker.com/)
 - [PostgreSQL](https://www.postgresql.org/)
 - [Sqlalchemy](https://www.sqlalchemy.org/)
+- [Sqlmodel](https://sqlmodel.tiangolo.com/)
 - [MessagePack](https://msgpack.org/) (C++ / Python)
 - [Boost C++ Libraries](https://www.boost.org/)
 - [OpenFOAM](https://www.openfoam.com/)
@@ -46,8 +41,6 @@ Runtrace is a lightweight **simulation run tracking system** for monitoring, man
 - [CPR (C++ Requests)](https://github.com/libcpr/cpr)
 - [CMake](https://cmake.org/)
 
-
----
 
 ## License
 
