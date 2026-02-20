@@ -8,7 +8,7 @@ import RunParameterSelector from "../components/RunParameterSelector";
 import BottomControls from "../components/BottomControls";
 import RunInfo from "../components/RunInfo";
 
-import { fetchPlotData, fetchRuns } from "../api";
+import { fetchPlotData, fetchRuns, updateRunStatus } from "../api";
 import { API_BASE } from "../config";
 
 const PANEL_WIDTH_KEY = "runsPanelWidth";
@@ -120,6 +120,17 @@ export default function Runs({ token }) {
       if (!Number.isNaN(id)) setRunId(id);
     }
   }, [runIdParam]);
+
+  // ------------------- Update run status -------------------
+  const handleUpdateRunStatus = async (runId, newStatus) => {
+    try {
+      console.info(`Attempting to update run ${runId} to ${newStatus}`);
+      await updateRunStatus(runId, newStatus, token);
+      await loadRuns();
+    } catch (err) {
+      console.error("Failed to update run status", err);
+    }
+  };
 
   // ------------------- Auto-select first run -------------------
   useEffect(() => {
@@ -242,6 +253,7 @@ export default function Runs({ token }) {
                 <RunsTable
                   runs={runs}
                   selectedRunId={runId}
+                  onUpdateRunStatus={handleUpdateRunStatus}
                   onSelectRun={(id) => {
                     setRunId(id);
                     navigate(`/dashboard/runs/${id}`);

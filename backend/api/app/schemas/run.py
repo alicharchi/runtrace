@@ -23,3 +23,8 @@ class RunsRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+class RunsUpdate(BaseModel):
+    status: Optional[int] = None
+    exitflag: Optional[int] = None
+    endtime: Optional[datetime] = None

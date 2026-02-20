@@ -9,7 +9,7 @@ from app.utils.auth import get_current_user, get_current_user_from_jwt
 from app.database import get_session
 from app.models.run import Runs
 from app.models.user import User
-from app.schemas.run import RunsCreate, RunsEnd, RunsRead
+from app.schemas.run import RunsCreate, RunsEnd, RunsRead, RunsUpdate
 from app.models.enums import RunStatus
 from app.sse.run_broadcaster import run_broadcaster
 
@@ -69,6 +69,66 @@ def get_runs(
         )
         for run in runs
     ]
+
+@router.patch("/{run_id}", response_model=Runs)
+def update_run(
+    run_id: int,
+    payload: RunsUpdate,
+    session: Session = Depends(get_session),
+    current_user=Depends(get_current_user),
+):
+    db_run = session.get(Runs, run_id)
+    if not db_run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    if db_run.user_id != current_user.id and not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    updated_fields = []
+    
+    if payload.status is not None:
+        try:
+            new_status = RunStatus(payload.status)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid status value: {payload.status}"
+            )
+
+        db_run.status = new_status
+        updated_fields.append("status")
+
+    if payload.exitflag is not None:
+        db_run.exitflag = payload.exitflag
+        updated_fields.append("exitflag")
+
+    if payload.endtime is not None:
+        db_run.endtime = payload.endtime
+        updated_fields.append("endtime")
+
+    if not updated_fields:
+        raise HTTPException(
+            status_code=400,
+            detail="No valid fields provided for update"
+        )
+
+    session.commit()
+    session.refresh(db_run)
+    
+    run_broadcaster.publish(
+        run_id=db_run.id,
+        owner_id=db_run.user_id,
+        payload={
+            "type": "run_updated",
+            "run_id": db_run.id,
+            "updated_fields": updated_fields,
+            "status": db_run.status,
+            "exitflag": db_run.exitflag,
+            "endtime": db_run.endtime.isoformat() if db_run.endtime else None,
+        },
+    )
+
+    return db_run
 
 # ----------------- SSE streaming endpoint -----------------
 """ @router.get("/stream")
@@ -134,3 +194,4 @@ def run_ended(
         },
     )
     return db_run
+
