@@ -131,10 +131,10 @@ def update_run(
     return db_run
 
 # ----------------- SSE streaming endpoint -----------------
-""" @router.get("/stream")
+@router.get("/stream")
 async def stream_runs(token: str = Query(...)):
     try:
-        current_user = get_current_user_from_jwt(token)
+        current_user = get_current_user_from_jwt(token)        
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid token") from e
 
@@ -145,19 +145,13 @@ async def stream_runs(token: str = Query(...)):
         "Access-Control-Allow-Credentials": "true"
     }
 
-    print(f"User {current_user.id} connected to SSE")
+    print(f"[*] User {current_user.id} connected to SSE")
 
     return StreamingResponse(
         run_broadcaster.subscribe(current_user),
         media_type="text/event-stream",
         headers=headers,
-    ) """
-
-@router.get("/stream")
-async def stream_runs():
-    print("SSE endpoint hit")
-    headers = {"Cache-Control": "no-cache", "Connection": "keep-alive"}
-    return StreamingResponse(run_broadcaster.subscribe(User(id=2, is_superuser=False, is_active=True)), media_type="text/event-stream", headers=headers)
+    ) 
 
 # ----------------- Mark run ended -----------------
 @router.put("/{run_id}/ended", response_model=Runs)

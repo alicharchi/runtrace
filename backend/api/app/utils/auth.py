@@ -30,29 +30,39 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # ----------------- JWT utils -----------------
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.utcnow() + (
+        expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def decode_jwt_token(token: str) -> dict:
-    """Decode a JWT token and verify expiration"""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         exp = payload.get("exp")
         if exp and datetime.utcnow().timestamp() > exp:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token expired",
+            )
         return payload
     except JWTError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from e
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        ) from e
 
-# ----------------- Current user -----------------
-def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)) -> User:
-    """FastAPI dependency for protected routes using Bearer token"""
+# ----------------- Current user (standard FastAPI auth) -----------------
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    session: Session = Depends(get_session),
+) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
     try:
         payload = decode_jwt_token(token)
         user_id = payload.get("sub")
@@ -65,29 +75,43 @@ def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Dep
     user = session.get(User, user_id)
     if not user or not user.is_active:
         raise credentials_exception
+
     return user
 
-def get_current_active_superuser(current_user: User = Depends(get_current_user)) -> User:
-    """Check if current user is superuser"""
+def get_current_active_superuser(
+    current_user: User = Depends(get_current_user),
+) -> User:
     if not current_user.is_superuser:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient privileges")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient privileges",
+        )
     return current_user
 
 # ----------------- SSE / manual JWT auth -----------------
 def get_current_user_from_jwt(token: str) -> User:
-    """Use this in SSE endpoints where Depends() is not available"""
+    if token.startswith("Bearer "):
+        token = token.replace("Bearer ", "")
+
     payload = decode_jwt_token(token)
     print("Decoded JWT payload:", payload)
+
     user_id = payload.get("sub")
     if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        )
 
-    user_id = int(user_id)
-    session = get_session()
+    user_id = int(user_id)    
+    session = next(get_session())
     try:
         user = session.get(User, user_id)
         if not user or not user.is_active:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found or inactive",
+            )
         return user
     finally:
         session.close()
