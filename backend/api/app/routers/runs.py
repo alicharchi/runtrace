@@ -31,15 +31,20 @@ def create_run(
     session.commit()
     session.refresh(db_run)
 
-    # Publish SSE event
+    # Publish SSE event with run owner info
     run_broadcaster.publish(
         run_id=db_run.id,
         owner_id=db_run.user_id,
         payload={
             "type": "run_started",
-            "run_id": db_run.id,
+            "id": db_run.id,
             "status": db_run.status,
+            "exitflag": None,
             "time": db_run.time.isoformat(),
+            "endtime": None,
+            "user_id": current_user.id,
+            "user_first_name": current_user.first_name,
+            "user_last_name": current_user.last_name,
         },
     )
     return db_run
@@ -70,6 +75,7 @@ def get_runs(
         for run in runs
     ]
 
+# ----------------- Update run -----------------
 @router.patch("/{run_id}", response_model=Runs)
 def update_run(
     run_id: int,
@@ -85,16 +91,12 @@ def update_run(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     updated_fields = []
-    
+
     if payload.status is not None:
         try:
             new_status = RunStatus(payload.status)
         except ValueError:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid status value: {payload.status}"
-            )
-
+            raise HTTPException(status_code=400, detail=f"Invalid status value: {payload.status}")
         db_run.status = new_status
         updated_fields.append("status")
 
@@ -107,31 +109,35 @@ def update_run(
         updated_fields.append("endtime")
 
     if not updated_fields:
-        raise HTTPException(
-            status_code=400,
-            detail="No valid fields provided for update"
-        )
+        raise HTTPException(status_code=400, detail="No valid fields provided for update")
 
     session.commit()
     session.refresh(db_run)
-    
+
+    # Get the actual run owner
+    run_owner = session.get(User, db_run.user_id)
+
+    # Publish SSE event
     run_broadcaster.publish(
         run_id=db_run.id,
         owner_id=db_run.user_id,
         payload={
             "type": "run_updated",
-            "run_id": db_run.id,
+            "id": db_run.id,
             "updated_fields": updated_fields,
             "status": db_run.status,
             "exitflag": db_run.exitflag,
             "endtime": db_run.endtime.isoformat() if db_run.endtime else None,
+            "user_id": run_owner.id,
+            "user_first_name": run_owner.first_name,
+            "user_last_name": run_owner.last_name,
         },
     )
 
     return db_run
 
 # ----------------- SSE streaming endpoint -----------------
-""" @router.get("/stream")
+@router.get("/stream")
 async def stream_runs(token: str = Query(...)):
     try:
         current_user = get_current_user_from_jwt(token)
@@ -141,23 +147,17 @@ async def stream_runs(token: str = Query(...)):
     headers = {
         "Cache-Control": "no-cache",
         "Connection": "keep-alive",
-        "Access-Control-Allow-Origin": "*",  
-        "Access-Control-Allow-Credentials": "true"
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Credentials": "true",
     }
 
-    print(f"User {current_user.id} connected to SSE")
+    print(f"[*] User {current_user.id} connected to SSE")
 
     return StreamingResponse(
         run_broadcaster.subscribe(current_user),
         media_type="text/event-stream",
         headers=headers,
-    ) """
-
-@router.get("/stream")
-async def stream_runs():
-    print("SSE endpoint hit")
-    headers = {"Cache-Control": "no-cache", "Connection": "keep-alive"}
-    return StreamingResponse(run_broadcaster.subscribe(User(id=2, is_superuser=False, is_active=True)), media_type="text/event-stream", headers=headers)
+    )
 
 # ----------------- Mark run ended -----------------
 @router.put("/{run_id}/ended", response_model=Runs)
@@ -181,17 +181,24 @@ def run_ended(
     session.commit()
     session.refresh(db_run)
 
+    # Get actual run owner
+    run_owner = session.get(User, db_run.user_id)
+
     # Publish SSE event
     run_broadcaster.publish(
         run_id=db_run.id,
         owner_id=db_run.user_id,
         payload={
             "type": "run_completed",
-            "run_id": db_run.id,
+            "id": db_run.id,
             "status": db_run.status,
             "exitflag": db_run.exitflag,
-            "endtime": db_run.endtime.isoformat(),
+            "time": db_run.time.isoformat() if db_run.time else None,
+            "endtime": db_run.endtime.isoformat() if db_run.endtime else None,
+            "user_id": run_owner.id,
+            "user_first_name": run_owner.first_name,
+            "user_last_name": run_owner.last_name,
         },
     )
-    return db_run
 
+    return db_run
