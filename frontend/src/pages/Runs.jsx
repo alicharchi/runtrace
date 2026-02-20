@@ -73,26 +73,36 @@ export default function Runs({ token }) {
 
     eventSource.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
+        const data = JSON.parse(event.data);        
+
         setRuns((prevRuns) => {
-          const idx = prevRuns.findIndex((r) => r.id === data.run_id);
+          const idx = prevRuns.findIndex((r) => r.id === data.id);
+
+          // Merge if exists
           if (idx >= 0) {
             const updated = [...prevRuns];
             updated[idx] = { ...updated[idx], ...data };
             return updated;
-          } else if (data.type === "run_started") {
-            return [...prevRuns, {
-              id: data.run_id,
-              status: data.status,
-              time: data.time,
-              exitflag: null,
-              endtime: null,
-              user_id: null,
-              user_email: null,
-              user_first_name: null,
-              user_last_name: null,
-            }];
           }
+
+          // Add new run if not exists (for run_started or late run_completed)
+          if (data.type === "run_started" || data.type === "run_completed") {
+            return [
+              ...prevRuns,
+              {
+                id: data.id,
+                status: data.status,
+                time: data.time,
+                exitflag: data.exitflag ?? null,
+                endtime: data.endtime ?? null,
+                user_id: data.user_id ?? null,
+                user_email: data.user_email ?? null,
+                user_first_name: data.user_first_name ?? null,
+                user_last_name: data.user_last_name ?? null,
+              },
+            ];
+          }
+
           return prevRuns;
         });
       } catch (err) {
@@ -124,7 +134,6 @@ export default function Runs({ token }) {
   // ------------------- Update run status -------------------
   const handleUpdateRunStatus = async (runId, newStatus) => {
     try {
-      console.info(`Attempting to update run ${runId} to ${newStatus}`);
       await updateRunStatus(runId, newStatus, token);
       await loadRuns();
     } catch (err) {
