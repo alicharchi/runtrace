@@ -4,7 +4,8 @@ import { formatDateTime, calculateDuration } from "../utils";
 
 export default function RunsTable({
   runs = [],
-  onSelectRun = () => { },
+  onSelectRun = () => {},
+  onUpdateRunStatus = () => {},
   selectedRunId = null,
 }) {
   return (
@@ -26,7 +27,7 @@ export default function RunsTable({
         <tbody>
           {runs.length === 0 ? (
             <tr>
-              <td colSpan={5} className="text-center text-muted">
+              <td colSpan={8} className="text-center text-muted">
                 No runs available
               </td>
             </tr>
@@ -35,17 +36,27 @@ export default function RunsTable({
               <tr
                 key={run.id}
                 style={{
-                  backgroundColor: run.id === selectedRunId ? "#e9f2ff" : undefined,
-                  fontWeight: run.id === selectedRunId ? "600" : "normal",
+                  backgroundColor:
+                    run.id === selectedRunId ? "#e9f2ff" : undefined,
+                  fontWeight:
+                    run.id === selectedRunId ? "600" : "normal",
                 }}
               >
-                <td>{run.id}</td>
-                <td><RunStatus status={run.status} /></td>
+                <td>{run.id}</td>                
+                <td>
+                  <RunStatus
+                    runId={run.id}
+                    status={run.status}
+                    onUpdate={onUpdateRunStatus}
+                  />
+                </td>
+
                 <td>{run.exitflag}</td>
                 <td>{run.user_first_name} {run.user_last_name}</td>
                 <td>{formatDateTime(run.time)}</td>
                 <td>{formatDateTime(run.endtime)}</td>
                 <td>{calculateDuration(run.time, run.endtime)}</td>
+
                 <td>
                   <Button
                     size="sm"

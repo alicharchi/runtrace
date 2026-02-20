@@ -102,6 +102,18 @@ export async function fetchPlotData(runId, parameter, token) {
   return data.points || [];
 }
 
+export async function updateRunStatus(runId, newStatus, token) {
+  return fetchWithToken(`${API_BASE}/runs/${runId}`, token, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      status: newStatus,
+    }),
+  });
+}
+
 // ------------------- Users -------------------
 
 export async function fetchUsers(token) {
