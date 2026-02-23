@@ -1,84 +1,47 @@
-import { useEffect, useState } from "react";
-import { Spinner } from "react-bootstrap";
-import { fetchParameters } from "../api";
+import { Spinner, Button, InputGroup, Form } from "react-bootstrap";
 
 export default function RunParameterSelector({
   selectedRunId,
+  parameters = [],
   selectedParameter,
   onParameterChange,
-  token,
+  onParameterDelete,
+  loading = false,
 }) {
-  const [parameters, setParameters] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    setParameters([]);
-    setLoading(false);
-
-    if (!selectedRunId || !token) return;
-
-    async function loadParameters() {
-      setLoading(true);
-      try {
-        const data = await fetchParameters(selectedRunId, token);
-        if (!cancelled) {
-          setParameters(data);
-
-          // Automatically select first parameter if available
-          if (data.length > 0) {
-            onParameterChange(data[0]);
-          } else {
-            onParameterChange(null);
-          }
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error(err);
-          setParameters([]);
-          onParameterChange(null);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    loadParameters();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedRunId, token, onParameterChange]);
-
   return (
-    <div className="run-parameter-selector d-flex gap-2 align-items-center">
-      <select
+    <InputGroup size="sm" className="run-parameter-selector" style={{ maxWidth: 300 }}>
+      <Form.Select
         value={selectedParameter ?? ""}
         disabled={loading || parameters.length === 0}
         onChange={(e) => onParameterChange(e.target.value || null)}
       >
-        {loading && (
-          <option value="">Loading parameters...</option>
-        )}
-
-        {!loading && parameters.length === 0 && (
-          <option value="">No parameters</option>
-        )}
-
+        {loading && <option value="">Loading parameters...</option>}
+        {!loading && parameters.length === 0 && <option value="">No parameters</option>}
         {!loading &&
           parameters.map((param) => (
             <option key={param} value={param}>
               {param}
             </option>
           ))}
-      </select>
+      </Form.Select>
 
       {loading && (
-        <Spinner animation="border" size="sm" role="status" className="ms-2">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
+        <InputGroup.Text>
+          <Spinner animation="border" size="sm" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </Spinner>
+        </InputGroup.Text>
       )}
-    </div>
+
+      {!loading && selectedParameter && (
+        <Button
+          variant="outline-danger"
+          title="Delete Parameter"
+          onClick={() => onParameterDelete(selectedRunId, selectedParameter)}
+        >
+          <i className="bi bi-trash" />
+        </Button>
+      )}
+    </InputGroup>
   );
 }

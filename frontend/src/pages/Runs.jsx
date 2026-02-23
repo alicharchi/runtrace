@@ -8,7 +8,16 @@ import RunParameterSelector from "../components/RunParameterSelector";
 import BottomControls from "../components/BottomControls";
 import RunInfo from "../components/RunInfo";
 
-import { fetchPlotData, fetchRuns, updateRunStatus, deleteRun } from "../api";
+import 
+{ 
+  fetchPlotData, 
+  fetchRuns, 
+  updateRunStatus, 
+  deleteRun, 
+  deleteParameter , 
+  fetchParameters
+} from "../api";
+
 import { API_BASE } from "../config";
 
 const PANEL_WIDTH_KEY = "runsPanelWidth";
@@ -22,12 +31,12 @@ const loadPanelWidth = () => {
 export default function Runs({ token }) {
   const { runId: runIdParam } = useParams();
   const navigate = useNavigate();
-
   const containerRef = useRef(null);
 
   // ------------------- State -------------------
   const [runs, setRuns] = useState([]);
   const [runId, setRunId] = useState(runIdParam ? Number(runIdParam) : null);
+  const [parameters, setParameters] = useState([]);
   const [parameter, setParameter] = useState(null);
   const [plotData, setPlotData] = useState([]);
   const [plotLoading, setPlotLoading] = useState(false);
@@ -81,15 +90,12 @@ export default function Runs({ token }) {
           }
 
           const idx = prevRuns.findIndex((r) => r.id === data.id);
-
-          // Merge if exists
           if (idx >= 0) {
             const updated = [...prevRuns];
             updated[idx] = { ...updated[idx], ...data };
             return updated;
           }
 
-          // Add new run if not exists (for run_started or late run_completed)
           if (data.type === "run_started" || data.type === "run_completed") {
             return [
               ...prevRuns,
@@ -117,14 +123,10 @@ export default function Runs({ token }) {
     eventSource.onerror = () => {
       console.warn("SSE connection lost, retrying...");
       eventSource.close();
-      setTimeout(() => {
-        setRuns((prev) => [...prev]);
-      }, 3000);
+      setTimeout(() => setRuns((prev) => [...prev]), 3000);
     };
 
-    return () => {
-      eventSource.close();
-    };
+    return () => eventSource.close();
   }, [token]);
 
   // ------------------- URL → state sync -------------------
@@ -145,12 +147,11 @@ export default function Runs({ token }) {
     }
   };
 
-  // --- Delete Run ---
+  // ------------------- Delete Run -------------------
   const handleDeleteRun = async (runId) => {
     if (!window.confirm(`Are you sure you want to delete run "${runId}"?`)) return;
 
     setRuns((prev) => prev.filter((r) => r.id !== runId));
-
     setRunId((current) => {
       if (current === runId) {
         navigate("/dashboard/runs", { replace: true });
@@ -163,8 +164,29 @@ export default function Runs({ token }) {
       await deleteRun(runId, token);
     } catch (err) {
       alert(`Failed to delete run: ${err.message}`);
-      // rollback (reload from server)
       loadRuns();
+    }
+  };
+
+  // ------------------- Delete Parameter -------------------
+  const handleDeleteParameter = async (runId, paramName) => {
+    if (!paramName) return;
+    if (!window.confirm(`Are you sure you want to delete parameter "${paramName}" from run "${runId}"?`)) return;
+
+    try {
+      await deleteParameter(runId, paramName, token);
+
+      // Remove from local state and select first remaining
+      setParameters((prev) => {
+        const updated = prev.filter((p) => p !== paramName);
+        const nextParam = updated.length > 0 ? updated[0] : null;
+        setParameter((current) => (current === paramName ? nextParam : current));
+        if (!nextParam) setPlotData([]);
+        return updated;
+      });
+    } catch (err) {
+      console.error("Failed to delete parameter:", err);
+      alert("Failed to delete parameter");
     }
   };
 
@@ -178,15 +200,26 @@ export default function Runs({ token }) {
   }, [loadingRuns, runs, runId, runIdParam, navigate]);
 
   // ------------------- Panel visibility persistence -------------------
-  useEffect(() => {
-    localStorage.setItem(PANEL_VISIBLE_KEY, JSON.stringify(leftVisible));
-  }, [leftVisible]);
+  useEffect(() => localStorage.setItem(PANEL_VISIBLE_KEY, JSON.stringify(leftVisible)), [leftVisible]);
 
-  // ------------------- Plot reset when run changes -------------------
+  // ------------------- Fetch parameters for selected run -------------------
   useEffect(() => {
-    setParameter(null);
-    setPlotData([]);
-  }, [runId]);
+    if (!runId || !token) return;
+
+    const loadParameters = async () => {
+      try {        
+        const data = await fetchParameters(runId, token);
+        setParameters(data);
+        setParameter(data.length > 0 ? data[0] : null);
+      } catch (err) {
+        console.error("Failed to fetch parameters:", err);
+        setParameters([]);
+        setParameter(null);
+      }
+    };
+
+    loadParameters();
+  }, [runId, token]);
 
   // ------------------- Fetch plot data -------------------
   const fetchAndSet = useCallback(async () => {
@@ -205,7 +238,6 @@ export default function Runs({ token }) {
   }, [runId, parameter, token]);
 
   useEffect(() => {
-    if (!runId || !parameter) return;
     fetchAndSet();
   }, [runId, parameter, fetchAndSet]);
 
@@ -229,21 +261,16 @@ export default function Runs({ token }) {
       if (!isResizing || !containerRef.current) return;
       const containerLeft = containerRef.current.getBoundingClientRect().left;
       const newWidth = e.clientX - containerLeft;
-      if (newWidth > 200 && newWidth < window.innerWidth - 200) {
-        setLeftWidth(newWidth);
-      }
+      if (newWidth > 200 && newWidth < window.innerWidth - 200) setLeftWidth(newWidth);
     };
-
     const handleMouseUp = () => {
       if (isResizing) {
         setIsResizing(false);
         localStorage.setItem(PANEL_WIDTH_KEY, leftWidth);
       }
     };
-
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
-
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
@@ -294,9 +321,7 @@ export default function Runs({ token }) {
                     setRunId(id);
                     navigate(`/dashboard/runs/${id}`);
                   }}
-                  onDeleteRun={(id) => {
-                    handleDeleteRun(id, token);
-                  }}
+                  onDeleteRun={handleDeleteRun}
                 />
               )}
             </>
@@ -326,7 +351,9 @@ export default function Runs({ token }) {
               <RunParameterSelector
                 selectedRunId={runId}
                 selectedParameter={parameter}
+                parameters={parameters}
                 onParameterChange={setParameter}
+                onParameterDelete={handleDeleteParameter}
                 token={token}
               />
             </div>
