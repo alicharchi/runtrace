@@ -114,8 +114,23 @@ export async function updateRunStatus(runId, newStatus, token) {
   });
 }
 
-// ------------------- Users -------------------
+export async function deleteRun(runId, token) {  
+    return fetchWithToken(`${API_BASE}/runs/${runId}`, token, {
+    method: "DELETE",
+  });
+}
 
+export async function deleteParameter(runId, parameter, token) {  
+  const url = new URL(`${API_BASE}/parameters`);
+  url.searchParams.append("run_id", runId);
+  url.searchParams.append("parameter", parameter);
+
+  return fetchWithToken(url.toString(), token, {
+    method: "DELETE",
+  });
+}
+
+// ------------------- Users -------------------
 export async function fetchUsers(token) {
   return fetchWithToken(`${API_BASE}/users`, token, {}, []);
 }

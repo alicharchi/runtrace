@@ -1,6 +1,6 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session, select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlmodel import Session, select, delete
 
 from app.utils.auth import get_current_user
 from app.database import get_session
@@ -29,3 +29,23 @@ def get_parameters(
         stmt = stmt.where(Runs.id == runid)
 
     return session.exec(stmt).all()
+
+@router.delete("/parameters", status_code=status.HTTP_204_NO_CONTENT)
+def delete_parameter(
+    run_id: int = Query(..., description="Run ID to delete the parameter from"),
+    parameter: str = Query(..., description="Name of the parameter to delete"),
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user),
+):    
+    run = session.get(Runs, run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+  
+    if run.user_id != current_user.id and not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not authorized to modify this run")
+
+    stmt = delete(Events).where(Events.run_id == run_id, Events.parameter == parameter)
+    result = session.exec(stmt)
+    session.commit()
+
+    return {"deleted_count": result.rowcount}

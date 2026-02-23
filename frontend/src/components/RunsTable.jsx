@@ -4,8 +4,9 @@ import { formatDateTime, calculateDuration } from "../utils";
 
 export default function RunsTable({
   runs = [],
-  onSelectRun = () => {},
-  onUpdateRunStatus = () => {},
+  onSelectRun = () => { },
+  onUpdateRunStatus = () => { },
+  onDeleteRun = () => { },
   selectedRunId = null,
 }) {
   return (
@@ -14,14 +15,15 @@ export default function RunsTable({
       <Table striped bordered hover size="sm" responsive>
         <thead>
           <tr>
-            <th>ID</th>
+            <th />            
             <th>Status</th>
+            <th>ID</th>
             <th>Exit Flag</th>
             <th>User</th>
             <th>Started</th>
             <th>Ended</th>
             <th>Duration</th>
-            <th />
+            <th />            
           </tr>
         </thead>
         <tbody>
@@ -42,7 +44,16 @@ export default function RunsTable({
                     run.id === selectedRunId ? "600" : "normal",
                 }}
               >
-                <td>{run.id}</td>                
+                <td>
+                  <Button
+                    size="sm"
+                    variant={run.id === selectedRunId ? "primary" : "outline-primary"}
+                    title="Select run"
+                    onClick={() => onSelectRun(run.id)}
+                  >
+                    <i className="bi-arrow-right-circle" />
+                  </Button>
+                </td>                
                 <td>
                   <RunStatus
                     runId={run.id}
@@ -50,20 +61,20 @@ export default function RunsTable({
                     onUpdate={onUpdateRunStatus}
                   />
                 </td>
-
+                <td>{run.id}</td>
                 <td>{run.exitflag}</td>
                 <td>{run.user_first_name} {run.user_last_name}</td>
                 <td>{formatDateTime(run.time)}</td>
                 <td>{formatDateTime(run.endtime)}</td>
                 <td>{calculateDuration(run.time, run.endtime)}</td>
-
                 <td>
                   <Button
                     size="sm"
-                    variant={run.id === selectedRunId ? "primary" : "outline-primary"}
-                    onClick={() => onSelectRun(run.id)}
+                    variant="outline-danger"
+                    title="Delete run"
+                    onClick={() => onDeleteRun(run.id)}
                   >
-                    Select
+                    <i className="bi bi-trash" />
                   </Button>
                 </td>
               </tr>

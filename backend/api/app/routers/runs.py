@@ -136,6 +136,42 @@ def update_run(
 
     return db_run
 
+# ----------------- Delete run -----------------------------
+@router.delete("/{run_id}", status_code=204)
+def delete_run(
+    run_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    db_run = session.get(Runs, run_id)
+    if not db_run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    if db_run.user_id != current_user.id and not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    run_owner = session.get(User, db_run.user_id)
+
+    try:
+        session.delete(db_run)
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+
+    # Publish SSE event
+    run_broadcaster.publish(
+        run_id=run_id,
+        owner_id=db_run.user_id,
+        payload={
+            "type": "run_deleted",
+            "id": run_id,
+            "user_id": run_owner.id,
+            "user_first_name": run_owner.first_name,
+            "user_last_name": run_owner.last_name,
+        },
+    )
+
 # ----------------- SSE streaming endpoint -----------------
 @router.get("/stream")
 async def stream_runs(token: str = Query(...)):
