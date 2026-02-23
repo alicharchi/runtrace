@@ -8,14 +8,13 @@ import RunParameterSelector from "../components/RunParameterSelector";
 import BottomControls from "../components/BottomControls";
 import RunInfo from "../components/RunInfo";
 
-import 
-{ 
-  fetchPlotData, 
-  fetchRuns, 
-  updateRunStatus, 
-  deleteRun, 
-  deleteParameter , 
-  fetchParameters
+import {
+  fetchPlotData,
+  fetchRuns,
+  updateRunStatus,
+  deleteRun,
+  deleteParameter,
+  fetchParameters,
 } from "../api";
 
 import { API_BASE } from "../config";
@@ -207,7 +206,7 @@ export default function Runs({ token }) {
     if (!runId || !token) return;
 
     const loadParameters = async () => {
-      try {        
+      try {
         const data = await fetchParameters(runId, token);
         setParameters(data);
         setParameter(data.length > 0 ? data[0] : null);
@@ -294,6 +293,7 @@ export default function Runs({ token }) {
         >
           {leftVisible && (
             <>
+              {/* Close button */}
               <Button
                 variant="light"
                 size="sm"
@@ -334,6 +334,18 @@ export default function Runs({ token }) {
             style={{ width: 5, cursor: "col-resize", backgroundColor: "#ddd" }}
             onMouseDown={() => setIsResizing(true)}
           />
+        )}
+
+        {/* Show button when panel hidden */}
+        {!leftVisible && (
+          <Button
+            variant="secondary"
+            size="sm"
+            style={{ position: "absolute", top: 10, left: 10, zIndex: 10 }}
+            onClick={() => setLeftVisible(true)}
+          >
+            Show Runs Panel
+          </Button>
         )}
 
         {/* Right Panel */}
