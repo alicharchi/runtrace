@@ -6,6 +6,7 @@ export default function RunsTable({
   runs = [],
   onSelectRun = () => {},
   onUpdateRunStatus = () => {},
+  onDeleteRun = () => {},
   selectedRunId = null,
 }) {
   return (
@@ -21,6 +22,7 @@ export default function RunsTable({
             <th>Started</th>
             <th>Ended</th>
             <th>Duration</th>
+            <th />
             <th />
           </tr>
         </thead>
@@ -64,6 +66,15 @@ export default function RunsTable({
                     onClick={() => onSelectRun(run.id)}
                   >
                     Select
+                  </Button>
+                </td>
+                <td>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => onDeleteRun(run.id)}
+                  >
+                    Delete
                   </Button>
                 </td>
               </tr>

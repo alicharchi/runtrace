@@ -8,7 +8,7 @@ import RunParameterSelector from "../components/RunParameterSelector";
 import BottomControls from "../components/BottomControls";
 import RunInfo from "../components/RunInfo";
 
-import { fetchPlotData, fetchRuns, updateRunStatus } from "../api";
+import { fetchPlotData, fetchRuns, updateRunStatus, deleteRun } from "../api";
 import { API_BASE } from "../config";
 
 const PANEL_WIDTH_KEY = "runsPanelWidth";
@@ -73,9 +73,13 @@ export default function Runs({ token }) {
 
     eventSource.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);        
+        const data = JSON.parse(event.data);
 
         setRuns((prevRuns) => {
+          if (data.type === "run_deleted") {
+            return prevRuns.filter((r) => r.id !== data.id);
+          }
+
           const idx = prevRuns.findIndex((r) => r.id === data.id);
 
           // Merge if exists
@@ -138,6 +142,29 @@ export default function Runs({ token }) {
       await loadRuns();
     } catch (err) {
       console.error("Failed to update run status", err);
+    }
+  };
+
+  // --- Delete Run ---
+  const handleDeleteRun = async (runId) => {
+    if (!window.confirm(`Are you sure you want to delete run "${runId}"?`)) return;
+
+    setRuns((prev) => prev.filter((r) => r.id !== runId));
+
+    setRunId((current) => {
+      if (current === runId) {
+        navigate("/dashboard/runs", { replace: true });
+        return null;
+      }
+      return current;
+    });
+
+    try {
+      await deleteRun(runId, token);
+    } catch (err) {
+      alert(`Failed to delete run: ${err.message}`);
+      // rollback (reload from server)
+      loadRuns();
     }
   };
 
@@ -266,6 +293,9 @@ export default function Runs({ token }) {
                   onSelectRun={(id) => {
                     setRunId(id);
                     navigate(`/dashboard/runs/${id}`);
+                  }}
+                  onDeleteRun={(id) => {
+                    handleDeleteRun(id, token);
                   }}
                 />
               )}
