@@ -40,7 +40,7 @@ export default function Runs({ token }) {
   const [plotData, setPlotData] = useState([]);
   const [plotLoading, setPlotLoading] = useState(false);
 
-  const [refreshSec, setRefreshSec] = useState(5);
+  const [refreshSec, setRefreshSec] = useState(0);
   const [lastRefresh, setLastRefresh] = useState(null);
 
   const [leftWidth, setLeftWidth] = useState(loadPanelWidth);
@@ -53,80 +53,110 @@ export default function Runs({ token }) {
   const [runsError, setRunsError] = useState("");
 
   // ------------------- Load Runs -------------------
-  const loadRuns = useCallback(async () => {
-    if (!token) return;
-    setLoadingRuns(true);
-    setRunsError("");
-    try {
-      const data = await fetchRuns(token);
-      setRuns(data);
-    } catch (err) {
-      console.error(err);
-      setRunsError("Failed to load runs");
-      setRuns([]);
-    } finally {
-      setLoadingRuns(false);
-    }
-  }, [token]);
+const loadRuns = useCallback(async () => {
+  if (!token) return;
+  setLoadingRuns(true);
+  setRunsError("");
+  try {
+    const data = await fetchRuns(token);
+    setRuns(data);
+    // refreshSec is now fully user-controlled, do not turn it on automatically
+  } catch (err) {
+    console.error(err);
+    setRunsError("Failed to load runs");
+    setRuns([]);
+    setRefreshSec(0); // just ensure it's off on load error
+  } finally {
+    setLoadingRuns(false);
+  }
+}, [token]);
 
-  useEffect(() => {
-    loadRuns();
-  }, [loadRuns]);
+useEffect(() => {
+  loadRuns();
+}, [loadRuns]);
 
-  // ------------------- SSE for real-time run updates -------------------
-  useEffect(() => {
-    if (!token) return;
-    const sseUrl = `${API_BASE}/runs/stream?token=${token}`;
-    const eventSource = new EventSource(sseUrl);
+// ------------------- SSE for real-time run updates -------------------
+useEffect(() => {
+  if (!token) return;
+  const sseUrl = `${API_BASE}/runs/stream?token=${token}`;
+  const eventSource = new EventSource(sseUrl);
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
+  eventSource.onmessage = (event) => {
+  try {
+    const data = JSON.parse(event.data);
 
-        setRuns((prevRuns) => {
-          if (data.type === "run_deleted") {
-            return prevRuns.filter((r) => r.id !== data.id);
-          }
+    setRuns((prevRuns) => {
+      let updatedRuns = [...prevRuns];
 
-          const idx = prevRuns.findIndex((r) => r.id === data.id);
-          if (idx >= 0) {
-            const updated = [...prevRuns];
-            updated[idx] = { ...updated[idx], ...data };
-            return updated;
-          }
-
-          if (data.type === "run_started" || data.type === "run_completed") {
-            return [
-              ...prevRuns,
-              {
-                id: data.id,
-                status: data.status,
-                time: data.time,
-                exitflag: data.exitflag ?? null,
-                endtime: data.endtime ?? null,
-                user_id: data.user_id ?? null,
-                user_email: data.user_email ?? null,
-                user_first_name: data.user_first_name ?? null,
-                user_last_name: data.user_last_name ?? null,
-              },
-            ];
-          }
-
-          return prevRuns;
-        });
-      } catch (err) {
-        console.error("SSE parse error", err);
+      if (data.type === "run_deleted") {
+        updatedRuns = prevRuns.filter((r) => r.id !== data.id);
+      } else {
+        const idx = prevRuns.findIndex((r) => r.id === data.id);
+        if (idx >= 0) {
+          updatedRuns[idx] = { ...updatedRuns[idx], ...data };
+        } else if (data.type === "run_started" || data.type === "run_completed") {
+          updatedRuns.push({
+            id: data.id,
+            status: data.status,
+            time: data.time,
+            exitflag: data.exitflag ?? null,
+            endtime: data.endtime ?? null,
+            user_id: data.user_id ?? null,
+            user_email: data.user_email ?? null,
+            user_first_name: data.user_first_name ?? null,
+            user_last_name: data.user_last_name ?? null,
+          });
+        }
       }
-    };
 
-    eventSource.onerror = () => {
-      console.warn("SSE connection lost, retrying...");
-      eventSource.close();
-      setTimeout(() => setRuns((prev) => [...prev]), 3000);
-    };
+      // --- Only turn OFF refresh when all runs are done ---
+      if (data.type === "run_completed" || data.type === "run_failed") {
+        const anyRunning = updatedRuns.some(
+          (r) => r.status === "running"
+        );
+        if (!anyRunning) setRefreshSec(0);
+      }
 
-    return () => eventSource.close();
-  }, [token]);
+      return updatedRuns;
+    });
+
+    // --- Fetch parameters for new run ONLY if it is currently selected ---
+    if (data.type === "run_started") {
+      setRunId((currentRunId) => {
+        // if no run selected yet, select the new run
+        if (currentRunId === null) return data.id;
+        return currentRunId;
+      });
+
+      setRunId((currentRunId) => {
+        if (currentRunId === data.id) {
+          (async () => {
+            try {
+              const params = await fetchParameters(data.id, token);
+              setParameters(params);
+              setParameter(params.length > 0 ? params[0] : null);
+            } catch (err) {
+              console.error("Failed to fetch parameters for new run", err);
+            }
+          })();
+        }
+        return currentRunId;
+      });
+    }
+
+  } catch (err) {
+    console.error("SSE parse error", err);
+  }
+};
+
+  eventSource.onerror = () => {
+    console.warn("SSE connection lost, retrying...");
+    eventSource.close();
+    setTimeout(() => setRuns((prev) => [...prev]), 3000);
+  };
+
+  return () => eventSource.close();
+}, [token]);
 
   // ------------------- URL → state sync -------------------
   useEffect(() => {
@@ -175,7 +205,6 @@ export default function Runs({ token }) {
     try {
       await deleteParameter(runId, paramName, token);
 
-      // Remove from local state and select first remaining
       setParameters((prev) => {
         const updated = prev.filter((p) => p !== paramName);
         const nextParam = updated.length > 0 ? updated[0] : null;
@@ -240,6 +269,7 @@ export default function Runs({ token }) {
     fetchAndSet();
   }, [runId, parameter, fetchAndSet]);
 
+  // ------------------- Auto-refresh -------------------
   useEffect(() => {
     if (!runId || !parameter || refreshSec === 0) return;
     let cancelled = false;
